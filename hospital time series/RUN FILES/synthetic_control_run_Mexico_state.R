@@ -12,7 +12,7 @@ require(RCurl)
 ###WORKING DIRECTORY Should be set as the directory where .Rmd file is saved  ####
 #setwd(auto.wd) ##automatically set working directory to '~desktop/synthetic-control-poisson-master/main analysis components/'
 
-setwd('C:/Users/dmw63/Documents/GitHub/synthetic-control-poisson/main analysis components')
+#setwd('C:/Users/dmw63/Documents/synthetic-control-poisson/main analysis components')
 
 #Used to check for relevant packages and update them if out of date or install them if not installed.
 update_packages  <- TRUE #Whether to update outdated packages.
@@ -31,8 +31,9 @@ if(country=="Brazil"){code_change   <- TRUE     #Used for Brazil data. Set to TR
 
 input_directory  <- 'C:/Users/dmw63/Dropbox (Personal)/Meta analysis datasets/Mexico_state/' #Directory (or URL) containing input data file.
 file_name="prelogNEW_Mexico_state.csv"
-output_directory <- '../Results'   #Directory where results will be saved.
-output_directory <- paste(output_directory,'_',country,'_', format(Sys.time(), '%Y-%m-%d-%H%M%S'), '/', sep = '')                     #Adds a subfolder to output directory to organize results by date and time run.
+outdir1 <- "C:/Users/dmw63/Weinberger Lab Dropbox/Dan Weinberger/pooling github/Sbarra-pooling/first stage estimates/"   #Directory where results will be saved.
+output_directory <- paste(outdir1, country,'/', sep = '')                     #Adds a subfolder to output directory to organize results by date and time run.
+
 data_file <- paste0(input_directory, file_name)
 #prelog_data <- read.csv(data_file, check.names = FALSE)# IF IMPORTING FROM LOCAL
 prelog_data <- read.csv(data_file, check.names = FALSE)# IF IMPORTING FROM URL
@@ -47,18 +48,18 @@ denom_name   <- 'ach_noj'   #Name of column containing denominator to be used in
 
 #MOST DATES MUST BE IN FORMAT "YYYY-MM-01", exception is end of pre period, which is 1 day before end of post period
 start_date        <- as.Date('2000-01-01') #Indicates the date of the first data point.
-intervention_date <- as.Date('2005-12-31') #Indicates the date of intervention in the data.
+intervention_date <- as.Date('2007-12-31') #Indicates the date of intervention in the data.
 end_date          <- as.Date('2012-12-01') #Indicates the date of the last data point.
-pre_period        <- as.Date(c('2000-01-01', '2005-12-31')) #Range over which the data is trained for the CausalImpact model.
-post_period       <- as.Date(c('2006-01-01', '2012-12-01')) #Range from the intervention date to the end date.
+pre_period        <- as.Date(c('2000-01-01', '2007-12-31')) #Range over which the data is trained for the CausalImpact model.
+post_period       <- as.Date(c('2008-01-01', '2012-12-01')) #Range from the intervention date to the end date.
 eval_period       <- as.Date(c('2010-01-01', '2012-12-01')) #Range over which rate ratio calculation will be performed.
 year_def   <-'epi_year'  #Can be cal_year to aggregate results by Jan-Dec; 'epi_year' to aggregate July-June
-sensitivity=TRUE
-crossval=TRUE #run cross validation? Note this takes time...adds ~40 min with 10 age groups, 7 cores#Run analysis, but don't generate HTML report
+sensitivity=FALSE
+crossval=FALSE #run cross validation? Note this takes time...adds ~40 min with 10 age groups, 7 cores#Run analysis, but don't generate HTML report
 # source('synthetic_control_analysis.R', local = TRUE)
 # source('synthetic_control_write_results.R', local = TRUE)
 # source('synthetic_control_plot.R', local = TRUE)
 
 #Run analysis and generate HTML report
-source('synthetic_control_report.R', local = TRUE)
-source('synthetic_control_write_results.R', local = TRUE) #save .csv files with output tables
+source('./main analysis components/synthetic_control_report.R', local = TRUE)
+source('./main analysis components/synthetic_control_write_results.R', local = TRUE) #save .csv files with output tables

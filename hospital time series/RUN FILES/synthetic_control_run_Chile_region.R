@@ -12,7 +12,7 @@ require(RCurl)
 ###WORKING DIRECTORY Should be set as the directory where .Rmd file is saved  ####
 #setwd(auto.wd) ##automatically set working directory to '~desktop/synthetic-control-poisson-master/main analysis components/'
 
-setwd('C:/Users/dmw63/Documents/GitHub/synthetic-control-poisson/main analysis components')
+#setwd('C:/Users/dmw63/Documents/synthetic-control-poisson/main analysis components')
 
 #Used to check for relevant packages and update them if out of date or install them if not installed.
 update_packages  <- TRUE #Whether to update outdated packages.
@@ -55,8 +55,8 @@ year_def   <-'cal_year'  #Can be cal_year to aggregate results by Jan-Dec; 'epi_
 # source('synthetic_control_plot.R', local = TRUE)
 
 
-output_directory <- '../Results'   #Directory where results will be saved.
-output_directory <- paste(output_directory,'_',country,'_', format(Sys.time(), '%Y-%m-%d-%H%M%S'), '/', sep = '')                     #Adds a subfolder to output directory to organize results by date and time run.
+outdir1 <- "C:/Users/dmw63/Weinberger Lab Dropbox/Dan Weinberger/pooling github/Sbarra-pooling/first stage estimates/"   #Directory where results will be saved.
+output_directory <- paste(outdir1, country,'/', sep = '')                     #Adds a subfolder to output directory to organize results by date and time run.
 data_file <- paste0(input_directory, file_name)
 #prelog_data <- read.csv(data_file, check.names = FALSE)# IF IMPORTING FROM LOCAL
 prelog_data <- read.csv(data_file, check.names = FALSE)# IF IMPORTING FROM URL
@@ -70,6 +70,5 @@ for(i in 1:length(state.vec)){
   plot( as.Date(as.character(plot1.ds$date)) , plot1.ds$J12_18, type='l', bty='l')
   title(state.sel)
 }
-
-source('synthetic_control_report.R', local = TRUE)
-source('synthetic_control_write_results.R', local = TRUE) #save .csv files with output tables
+source('./main analysis components/synthetic_control_report.R', local = TRUE)
+source('./main analysis components/synthetic_control_write_results.R', local = TRUE) #save .csv files with output tables
