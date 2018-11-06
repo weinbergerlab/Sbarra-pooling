@@ -14,53 +14,24 @@ subnational=c(0,0,0,1,1,1,1) #Vector indicating whether dataset contains subnati
 max.time.points=48+1  #What is maxlength of post-vaccine period to include?
 #####################################################################################################################################
 #format data
-source('compile stage1 results.R')
-  
-###################################################
-##### JAGS (Just Another Gibbs Sampler) model #####
-###################################################
-model_string<-"
-model{
+source('compile stage1 results.R') #Read in data
+source('model.R')  #Read in model
 
-for(i in 1:n.countries){
-   for(j in 1:N.states[i]){
-    w_hat[1:ts.length[i,j], j,i] ~ dmnorm(w_true[i,j, 1:ts.length[i,j]], log_rr_prec_all[1:ts.length[i,j], 1:ts.length[i,j], j,i])
-    w_true[i,j, 1:ts.length[i,j]] ~ dmnorm(reg_mean[i,j, 1:ts.length[i,j]], w_true_cov_inv[i,j, 1:ts.length[i,j], 1:ts.length[i,j]])
-    reg_mean[i,j, 1:ts.length[i,j]]<-spl.t.std[1:ts.length[i,j],]%*%beta[i,j, 1:(n.knots + 1)]
-    beta[i,j, 1:(n.knots + 1)] ~ dmnorm(lambda, Sigma_inv)
-    for(k1 in 1:ts.length[i,j]){
-    for(k2 in 1:ts.length[i,j]){
-       w_true_cov_inv[i,j,k1,k2]<-ifelse(k1==k2, w_true_var_inv[i,j], 0)
-        }
-      }
-    w_true_var_inv[i,j]<-1/(w_true_sd[i,j]*w_true_sd[i,j])
-    w_true_sd[i,j] ~ dunif(0, 1000)
-  }
-}
-
-lambda ~ dmnorm(lambda_mean, lambda_cov_inv)
-Sigma_inv[1:(n.knots + 1), 1:(n.knots + 1)] ~ dwish(identity[1:(n.knots + 1), 1:(n.knots + 1)], (n.knots + 1 + 1))      
-Sigma[1:(n.knots + 1), 1:(n.knots + 1)]<-inverse(Sigma_inv[1:(n.knots + 1), 1:(n.knots + 1)])
-
-for(k1 in 1:(n.knots + 1)){   
-  lambda_mean[k1]<-0
-  for(k2 in 1:(n.knots + 1)){
-   lambda_cov_inv[k1,k2]<-ifelse(k1==k2, (1/1000), 0)
-}
-}
-
-}
-"
-#Model Organization
+#Run Model
 model_jags<-jags.model(textConnection(model_string),
-                       data=list('n.countries' = N.countries, 
-                                 'N.states' = N.states, 
-                                 'n.knots' = N.knots, 
-                                 'w_hat' = log_rr_q_all,
-                                 'log_rr_prec_all' = log_rr_prec_all,  
-                                 'spl.t.std' = spl.t.std, 
-                                 'ts.length' = ts.length_mat,
-                                 'identity' = identity), n.chains=2) 
+                      data=list('n.countries' = N.countries, 
+                                'N.states' = N.states, 
+                                'w_hat' = log_rr_q_all,
+                                'log_rr_prec_all' = log_rr_prec_all,  
+                                'spl.t.std' = spl.t.std, 
+                                'ts.length' = ts.length_mat,
+                                'p'=p,
+                                'q'=q,
+                                'm'=m,
+                                'w'=w,
+                                'z'=z,
+                                'I_Omega'= I_Omega,
+                                'I_Sigma'=I_Sigma), n.chains=2) 
 
 #Posterior Sampling
 update(model_jags, 
@@ -71,7 +42,7 @@ update(model_jags,
 posterior_samples<-coda.samples(model_jags, 
                                 variable.names=c("reg_mean", "beta", "sigma_regression", "w_true", "alpha.C", "beta_k_q",'beta_prec_ts'),
                                 thin=10,
-                                n.iter=5000)
+                                n.iter=50000)
 #plot(posterior_samples, ask=TRUE)
 
 
