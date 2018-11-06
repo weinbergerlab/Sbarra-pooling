@@ -5,13 +5,16 @@ require(reshape2)
 require(abind)
 library(mgcv)   
 library(R2jags) 
-library(splines) 
+library(splines)
+library(lubridate)
 
 ####SET INPUTS PARAMETERS#############################################################################################################
 #setwd('C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/')
 countries<-c('US', 'Fiji','Denmark' ,'Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
 subnational=c(0,0,0,1,1,1,1) #Vector indicating whether dataset contains subnational estmates
-max.time.points=48+1  #What is maxlength of post-vaccine period to include?
+max.time.points=48
+pre.vax.time<-12 #how many to use when anchoring at t=0
+tot_time<-max.time.points+pre.vax.time
 #####################################################################################################################################
 #format data
 source('compile stage1 results.R') #Read in data
@@ -42,7 +45,7 @@ update(model_jags,
 posterior_samples<-coda.samples(model_jags, 
                                 variable.names=c("reg_mean", "beta", "sigma_regression", "w_true", "alpha.C", "beta_k_q",'beta_prec_ts'),
                                 thin=10,
-                                n.iter=50000)
+                                n.iter=10000)
 #plot(posterior_samples, ask=TRUE)
 
 
@@ -139,6 +142,7 @@ cols.plot<- c('#e41a1c','#377eb8','#4daf4a','#984ea3', '#ff7f00','#a65628','#f78
 shiny.ds<-list(preds.nobias.q.alt,country2 ,state2,cols.plot,country.labs2)
 names(shiny.ds)<-c('preds.nobias.q.alt','country2' ,'state2','cols.plot','country.labs2')
 saveRDS(shiny.ds,'C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/B_spline with pooling/shiny.small.multiples.rds')
+tiff('C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/small multiple bsplines.tiff', width = 12, height = 9, units = "in",res=200)
 par(mfrow=c(10,10) , mar=c(0.5,1,0.6,0))
 for (i in 1:dim(preds.nobias.q.alt )[3]){
   y.all<- t(exp(preds.nobias.q.alt[,,i]))
@@ -150,14 +154,14 @@ for (i in 1:dim(preds.nobias.q.alt )[3]){
   matplot(t(exp(preds.nobias.q.alt[,,i])), bty='l', type='l', col='white', lty=c(2,1,2), xlim=c(0,48), ylim=c(0.5,2), axes=F)
   polygon(xx, yy, col='gray90', border=NA)
   points( y.all[,2], col=cols.plot[country2[i]], type='l')
-  abline(h=1, lty=3, col='gray', lwd=0.5)
+  abline(h=c(0.8,1,1.2), lty=c(3,2,3), col=c('gray','black','gray'), lwd=c(0.5,1,0.5)) 
   Axis(side=1, labels=FALSE, at=c(0,12,24,36,48), tck=-0.005,  col='gray')
   Axis(side=2, labels=FALSE, at=c(0.5,1,2.0), tck=-0.005, col='gray')
   if(state2[i]==1){
     title(country.labs2[country2[i]], col.main=cols.plot[country2[i]] )
     }
 }
-
+dev.off()
 
 
 
@@ -265,7 +269,7 @@ save(list = ls(all.names = TRUE),file="C:/Users/dmw63/Dropbox (Personal)/meta_an
 
 ##Extract Fiji
 fiji.dates<-seq.Date(    from=as.Date('2012-09-01'),to= as.Date('2015-12-01'), by='month')
-fiji.preds<-t(preds[,1:length(fiji.dates),which(countries=="stack_Fiji")])
+fiji.preds<-t(preds[,1:length(fiji.dates),which(countries=="Fiji")])
 fiji.raw<-read.csv('C:\\Users\\DMW63\\Desktop\\My documents h\\GATES\\CausalImpact code\\Input data\\Fiji\\prelog_Fiji_processed_data4.csv')
 fiji.raw2<-fiji.raw[fiji.raw$age_group=='ac_pneumonia_Age1_0',]
 fill.length<- nrow(fiji.raw2) - length(fiji.dates)
