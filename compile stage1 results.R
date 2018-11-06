@@ -78,9 +78,9 @@ for (c in 1:N.countries){
 }
 
 ##Combine together estimates from each country into a single array
-log_rr_q_all<-array(NA, dim=c(max.time.points,max(N.states),N.countries))
+log_rr_q_all<-array(NA, dim=c(tot_time,max(N.states),N.countries))
 state.labels<-array(NA, dim=dim(log_rr_q_all)[c(2:3)]   )
-log_rr_prec_all<-array(NA, dim=c(max.time.points,max.time.points,max(N.states),N.countries))
+log_rr_prec_all<-array(NA, dim=c(tot_time,tot_time,max(N.states),N.countries))
 ts.length<-rep(NA, times=N.countries)
 for(i in 1:N.countries){
   for(j in 1:N.states[i]){
