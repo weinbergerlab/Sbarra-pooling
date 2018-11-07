@@ -8,7 +8,7 @@ library(R2jags)
 library(splines)
 library(lubridate)
 
-output_directory<- paste0(dirname(getwd()), "/Results/")
+output_directory<- paste0(dirname(getwd()), "/Results nopool/")
 ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
 
 ####SET INPUTS PARAMETERS#############################################################################################################
@@ -21,7 +21,7 @@ tot_time<-max.time.points+pre.vax.time
 #####################################################################################################################################
 #format data
 source('compile stage1 results.R') #Read in data
-source('model.R')  #Read in model
+source('model nopool.R')  #Read in model
 
 #Run Model
 model_jags<-jags.model(textConnection(model_string),
@@ -31,13 +31,8 @@ model_jags<-jags.model(textConnection(model_string),
                                 'log_rr_prec_all' = log_rr_prec_all,  
                                 'spl.t.std' = spl.t.std, 
                                 'ts.length' = ts.length_mat,
-                                'p'=p,
-                                'q'=q,
-                                'm'=m,
-                                'w'=w,
-                                'z'=z,
-                                'I_Omega'= I_Omega,
-                                'I_Sigma'=I_Sigma), n.chains=2) 
+                                'p'=p
+                                ), n.chains=2) 
 
 #Posterior Sampling
 update(model_jags, 
