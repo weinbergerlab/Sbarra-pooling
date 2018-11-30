@@ -1,13 +1,13 @@
 library(plyr)
 
 output_directory<- paste0(dirname(getwd()), "/Results/")
-ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
+output_directory_nopool<- paste0(dirname(getwd()), "/Results nopool/")
 
 countries<-c('US', 'Fiji','Denmark' ,'Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
 preds.pool<-readRDS( file=paste0(output_directory,"reg_mean_with_pooling bsplines nobias.rds"))
-preds.no.pool<-readRDS( file="C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/B_spline no pooling/reg_mean_no_pooling bsplines nobias.rds")
-preds.no.pool.bias<-readRDS( file="C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/B_spline no pooling/reg_mean_no_pool b_spline.rds")
-
+preds.no.pool<-readRDS( file=paste0(output_directory_nopool,"reg_mean_with_pooling bsplines nobias.rds"))
+preds.no.pool.bias<-readRDS( file=paste0(output_directory_nopool,"reg_mean_with_pooling bsplines.rds"))
+ 
 state.labels<-readRDS( file=paste0(output_directory,"state labels.rds"))
 
 cov1.br<-read.csv("C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/PCVCoverage_Brazil_paho.csv")
@@ -62,17 +62,20 @@ preds.no.pool.bias.Br<-preds.no.pool.bias.q[,country=="Brazil_state",]
 #Merge with vax cov--some states don't have data for all 4 years post
 #Need to chekc this--assumes that states analyzed in numerical order n 1st stage model)
 #POOLING VS COVRAGE
+par(mfrow=c(1,3))
 plot(cov1.br$X2013 ,exp(preds.pool.q.Br[37,,2]), type='p', col='black', lty=1, bty='l', ylab="Rate Ratio", xlab="Uptake (%)")
 abline(h=1, col='gray', lty=2)
+title("pooled estimate vs coverage")
 #summary(lm(preds.pool.q.Br[37,,2]~ cov1.br$X2013 ))
 ##NO POOLING VS COVERAGE
 plot(cov1.br$X2013 ,exp(preds.no.pool.q.Br[37,,2]), type='p', col='black', lty=1, bty='l', ylab="Rate Ratio", xlab="Uptake (%)")
 abline(h=1, col='gray', lty=2)
-#summary(lm(preds.no.pool.q.Br[37,,2]~ cov1.br$X2013 ))
-
+title("Unpooled estimate vs coverage")
 ##NO POOLING, NO UNBIASING VS COVERAGE
 plot(cov1.br$X2013 ,exp(preds.no.pool.bias.Br[37,,2]), type='p', col='black', lty=1, bty='l', ylab="Rate Ratio", xlab="Uptake (%)")
 abline(h=1, col='gray', lty=2)
+title("Unpooled estimate (without unbiasing) vs coverage")
+
 #summary(lm(preds.no.pool.bias.Br[37,,2]~ cov1.br$X2013 ))
 cor( cbind( cov1.br$X2013,preds.pool.q.Br[37,,2],preds.no.pool.q.Br[37,,2],preds.no.pool.bias.Br[37,,2]), method='spearman')
 
