@@ -30,7 +30,7 @@ model_jags<-jags.model(textConnection(model_string),
                                 'w_hat' = log_rr_q_all[,1:5,, drop=FALSE],
                                 'log_rr_prec_all' = log_rr_prec_all[,,1:5,, drop=FALSE],  
                                 'ts.length' = ts.length_mat,
-                                'p'=2,
+                                'p'=4,
                                 'q'=q,
                                 'm'=m,
                                 'w'=w,
@@ -45,7 +45,7 @@ update(model_jags,
 # dic.mod1a
 
 posterior_samples<-coda.samples(model_jags, 
-                                variable.names=c("reg_mean", 'cp1','cp2',"beta", "sigma_regression", "w_true", "alpha.C", "beta_k_q",'beta_prec_ts'),
+                                variable.names=c("reg_mean", 'cp',"beta", "sigma_regression", "w_true", "alpha.C", "beta_k_q",'beta_prec_ts'),
                                 thin=10,
                                 n.iter=10000)
 #plot(posterior_samples, ask=TRUE)

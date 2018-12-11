@@ -18,8 +18,8 @@ model{
       #CHANGE POINT MODEL #
       #####################
       reg_mean[i,j, t]<-(beta[i,j, 1] 
-            + step(t-cp[1,i,j])*(1-step(t-cp[1,i,j]))*beta[i,j, 2]*(t-cp[1,i,j])
-            + step(t-cp[2,i,j])*beta[i,j, 2]*(cp[2,i,j])
+            + step(t-cp1[i,j])*(1-step(t-cp1[i,j]))*beta[i,j, 2]*(t-cp1[i,j])
+            + step(t-cp2[i,j])*beta[i,j, 2]*(cp2[i,j])
             )
        }
       for(k1 in 1:ts.length[i,j]){
@@ -30,17 +30,17 @@ model{
     w_true_var_inv[i,j]<-1/(w_true_sd[i,j]*w_true_sd[i,j])
     w_true_sd[i,j] ~ dunif(0, 1000)
 
-    #This ensures CP[2] is after CP[11..see JAGS manual
-      for(v in c(1:2)){
-       cp0[v,i,j]~dgamma(0.001,0.001)
-      }
-      cp[1:2,i,j]<-sort(cp0[,i,j])
-
+    #In beta matrix, beta1=intercept, beta2=slope, beta3=changepoint, beta4=
+    #This ensures CP[2] is after CP1
+      cp1[i,j]<-exp(beta[i,j, 3])
+      cp2.add[i,j]<-exp(beta[i,j, 4])
+      cp2[i,j]<-cp1[i,j] +cp2.add[i,j]
+    
     ##############################################################
     #Second Stage Statistical Model
     ##############################################################
-    beta[i,j, 1] ~ dnorm(0, 1e-4) #Prior on intercept
-    beta[i,j, 2] ~ dnorm(0, 1e-4)T(,0) #Truncate slope to be 0 or negative
+    beta[i,j, 1:p] ~ dmnorm(mu1[i,j, 1:p], Sigma_inv[i, 1:p, 1:p])
+
     }
   }
 }
