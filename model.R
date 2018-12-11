@@ -19,7 +19,7 @@ model{
       #####################
       reg_mean[i,j, t]<-(beta[i,j, 1] 
             + step(t-cp1[i,j])*(1-step(t-cp2[i,j]))*beta[i,j, 2]*(t-cp1[i,j]) #Slope for period between CP1 and CP2
-            + step(t-cp2[i,j])*beta[i,j, 2]*(cp2[i,j])
+            + step(t-cp2[i,j])*beta[i,j, 2]*(cp2[i,j]-cp1[i,j])
             )
        }
       for(k1 in 1:ts.length[i,j]){
