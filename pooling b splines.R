@@ -13,8 +13,8 @@ ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
 
 ####SET INPUTS PARAMETERS#############################################################################################################
 #setwd('C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/')
-countries<-c('US', 'Fiji','Denmark' ,'Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
-subnational=c(0,0,0,1,1,1,1) #Vector indicating whether dataset contains subnational estmates
+countries<-c('Brazil_state')
+subnational=c(1) #Vector indicating whether dataset contains subnational estmates
 max.time.points=48
 pre.vax.time<-12 #how many to use when anchoring at t=0
 tot_time<-max.time.points+pre.vax.time
@@ -26,12 +26,11 @@ source('model.R')  #Read in model
 #Run Model
 model_jags<-jags.model(textConnection(model_string),
                       data=list('n.countries' = N.countries, 
-                                'N.states' = N.states, 
-                                'w_hat' = log_rr_q_all,
-                                'log_rr_prec_all' = log_rr_prec_all,  
-                                'spl.t.std' = spl.t.std, 
+                                'N.states' = 5, 
+                                'w_hat' = log_rr_q_all[,1:5,, drop=FALSE],
+                                'log_rr_prec_all' = log_rr_prec_all[,,1:5,, drop=FALSE],  
                                 'ts.length' = ts.length_mat,
-                                'p'=p,
+                                'p'=2,
                                 'q'=q,
                                 'm'=m,
                                 'w'=w,
@@ -46,7 +45,7 @@ update(model_jags,
 # dic.mod1a
 
 posterior_samples<-coda.samples(model_jags, 
-                                variable.names=c("reg_mean", "beta", "sigma_regression", "w_true", "alpha.C", "beta_k_q",'beta_prec_ts'),
+                                variable.names=c("reg_mean", 'cp1','cp2',"beta", "sigma_regression", "w_true", "alpha.C", "beta_k_q",'beta_prec_ts'),
                                 thin=10,
                                 n.iter=10000)
 #plot(posterior_samples, ask=TRUE)
