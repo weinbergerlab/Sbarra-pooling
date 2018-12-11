@@ -13,8 +13,8 @@ ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
 
 ####SET INPUTS PARAMETERS#############################################################################################################
 #setwd('C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/')
-countries<-c('Brazil_state')
-subnational=c(1) #Vector indicating whether dataset contains subnational estmates
+countries<-c('Brazil_state', 'Chile_state')
+subnational=c(1,1) #Vector indicating whether dataset contains subnational estmates
 max.time.points=48
 pre.vax.time<-12 #how many to use when anchoring at t=0
 tot_time<-max.time.points+pre.vax.time
@@ -26,7 +26,7 @@ source('model.R')  #Read in model
 #Run Model
 model_jags<-jags.model(textConnection(model_string),
                       data=list('n.countries' = N.countries, 
-                                'N.states' = 5, 
+                                'N.states' = c(5,5), 
                                 'w_hat' = log_rr_q_all[,1:5,, drop=FALSE],
                                 'log_rr_prec_all' = log_rr_prec_all[,,1:5,, drop=FALSE],  
                                 'ts.length' = ts.length_mat,
@@ -36,7 +36,7 @@ model_jags<-jags.model(textConnection(model_string),
                                 'w'=w,
                                 'z'=z,
                                 'I_Omega'= I_Omega,
-                                'I_Sigma'=I_Sigma), n.chains=2) 
+                                'I_Sigma'=I_Sigma), n.chains=2, n.adapt=1000) 
 
 #Posterior Sampling
 update(model_jags, 
