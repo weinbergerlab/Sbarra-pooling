@@ -40,8 +40,34 @@ model{
     #Second Stage Statistical Model
     ##############################################################
     beta[i,j, 1:p] ~ dmnorm(mu1[i,j, 1:p], Sigma_inv[i, 1:p, 1:p])
-
-    }
+for(k in 1:p){
+    mu1[i,j,k] <- z[i,j, 1:q]%*%gamma[i,k, 1:q]
+}
+}
+for(k in 1:p){
+###############################################################
+#Third Stage Statistical Model
+###############################################################
+gamma[i,k, 1:q] ~ dmnorm(mu2[i,k, 1:q], Omega_inv[k, 1:q, 1:q])
+for(l in 1:q){
+mu2[i,k,l] <- w[i, 1:m]%*%theta[k,l, 1:m]
+}
+} 
+Sigma_inv[i, 1:p, 1:p] ~ dwish(I_Sigma[1:p, 1:p], (p + 1))
+Sigma[i, 1:p, 1:p] <- inverse(Sigma_inv[i, 1:p, 1:p])
+}
+#############################################################
+#Remaining Prior Distributions
+#############################################################
+##IF q=1 (intercept only for predictors of slopes and intercepts)
+for(k in 1:p){
+Omega_inv[k, 1:q, 1:q] <- 1/(Omega[k, 1:q, 1:q]*Omega[k, 1:q, 1:q])
+Omega[k, 1:q, 1:q] ~ dunif(0, 1000)
+for(l in 1:q){
+for(r in 1:m){
+theta[k,l,r] ~ dnorm(0, 0.0001)
   }
+ }
+ }
 }
 "
