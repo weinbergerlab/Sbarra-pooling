@@ -124,8 +124,8 @@ identity<-diag(nrow(spl.t.std))
 ts.length.vec<-as.vector(t(ts.length_mat))[!is.na(as.vector(t(ts.length_mat)))]
 
 #Time index
-#time.index<-c(rep(0,times=pre.vax.time), seq.int(from=1, to=max.time.points, by=1))/max.time.points
-time.index<-c(rep(0,times=pre.vax.time), seq.int(from=1, to=max.time.points, by=1))
+time.index<-c(rep(0,times=pre.vax.time), seq.int(from=1, to=max.time.points, by=1))/max.time.points
+#time.index<-c(rep(0,times=pre.vax.time), seq.int(from=1, to=max.time.points, by=1))
 
 ##Matrices to input to JAGS
 #I_Sigma<-replicate( N.countries, diag(p) )

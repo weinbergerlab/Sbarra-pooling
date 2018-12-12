@@ -13,10 +13,10 @@ ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
 
 ####SET INPUTS PARAMETERS#############################################################################################################
 #setwd('C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/')
-countries<-c('Brazil_state', 'Chile_state')
-subnational=c(1,1) #Vector indicating whether dataset contains subnational estmates
-max.time.points=48
+countries<-c('US', 'Fiji','Denmark' ,'Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
+subnational=c(0,0,0,1,1,1,1) #Vector indicating whether dataset contains subnational estmatesmax.time.points=48
 pre.vax.time<-12 #how many to use when anchoring at t=0
+max.time.points<-48
 tot_time<-max.time.points+pre.vax.time
 #####################################################################################################################################
 #format data
@@ -31,8 +31,9 @@ model_jags<-jags.model(textConnection(model_string),
                                  'log_rr_prec_all' = log_rr_prec_all, 
                                 'ts.length' = ts.length_mat,
                                 'I_Omega'= I_Omega,
+                                'max.time.points'=max.time.points,
                                 'time.index'=time.index,
-                                'I_Sigma'=I_Sigma), n.chains=2, n.adapt=2000) 
+                                'I_Sigma'=I_Sigma), n.chains=1, n.adapt=1000) 
 
 #Posterior Sampling
 update(model_jags, 
@@ -43,7 +44,7 @@ update(model_jags,
 posterior_samples<-coda.samples(model_jags, 
                                 variable.names=c("reg_mean", 'cp1','cp2',"beta", "sigma_regression", "w_true", "alpha.C", "beta_k_q",'beta_prec_ts'),
                                 thin=10,
-                                n.iter=10000)
+                                n.iter=50000)
 #plot(posterior_samples, ask=TRUE)
 
 
