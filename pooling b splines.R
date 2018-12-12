@@ -26,19 +26,13 @@ source('model.R')  #Read in model
 #Run Model
 model_jags<-jags.model(textConnection(model_string),
                       data=list('n.countries' = N.countries, 
-                                'N.states' = N.states, 
-                                # 'w_hat' = log_rr_q_all[,1:5,, drop=FALSE],
-                                # 'log_rr_prec_all' = log_rr_prec_all[,,1:5,, drop=FALSE],  
+                                'n.states' = N.states, 
                                  'w_hat' = log_rr_q_all,
                                  'log_rr_prec_all' = log_rr_prec_all, 
                                 'ts.length' = ts.length_mat,
-                                'p'=4,
-                                'q'=q,
-                                'm'=m,
-                                'w'=w,
-                                'z'=z,
                                 'I_Omega'= I_Omega,
-                                'I_Sigma'=I_Sigma), n.chains=2, n.adapt=1000) 
+                                'time.index'=time.index,
+                                'I_Sigma'=I_Sigma), n.chains=2, n.adapt=2000) 
 
 #Posterior Sampling
 update(model_jags, 
@@ -72,41 +66,55 @@ posterior_samples<-coda.samples(model_jags,
 # par(mfrow=c(1,1))
 # caterplot(posterior_samples)
 
+
+x.func <- function(x){ sub(".*\\[(.*)\\].*", "\\1", x, perl=TRUE)} 
+
 #############################################################################
 ##### create posterior estimates into data frames (w.true and reg.mean) #####
 #############################################################################
-betas.m1<-posterior_samples[[1]][,grep("^beta.*,1]",dimnames(posterior_samples[[1]])[[2]])]
-betas.m2<-posterior_samples[[1]][,grep("^beta.*,2]",dimnames(posterior_samples[[1]])[[2]])]
-betas.m3<-posterior_samples[[1]][,grep("^beta.*,3]",dimnames(posterior_samples[[1]])[[2]])]
-betas.m4<-posterior_samples[[1]][,grep("^beta.*,4]",dimnames(posterior_samples[[1]])[[2]])]
-betas.m5<-posterior_samples[[1]][,grep("^beta.*,5]",dimnames(posterior_samples[[1]])[[2]])]
-betas.m6<-posterior_samples[[1]][,grep("^beta.*,6]",dimnames(posterior_samples[[1]])[[2]])]
-beta.labs<-colnames(betas.m1) # labels from matrix
-beta.labs.extract<- sub(".*\\[(.*)\\].*", "\\1", beta.labs, perl=TRUE)    #extract index numbers from the labels
-beta.labs.extract2<-matrix(as.numeric(unlist(strsplit(beta.labs.extract, ","))),ncol=3, byrow=TRUE) #format into a matrix
+beta1<-posterior_samples[[1]][,grep("^beta.*,1]",dimnames(posterior_samples[[1]])[[2]])] #Intercept
+beta1.lab<-x.func(dimnames(beta1)[[2]]) 
+beta1.lab.spl<-as.data.frame(matrix(as.numeric(as.character(unlist(strsplit(beta1.lab, ',',fixed=TRUE)))), ncol=3, byrow=TRUE))
+names(beta1.lab.spl)<-c('country','state')
 
+##melt and cast predicted values into 4D array N,t,i,j array
+reg_mean<-posterior_samples[[1]][,grep("reg_mean",dimnames(posterior_samples[[1]])[[2]])]
+pred1<-reg_mean
+pred.indices<- x.func(dimnames(pred1)[[2]]) 
+pred.indices.spl<-matrix(unlist(strsplit(pred.indices, ',',fixed=TRUE)), ncol=3, byrow=TRUE)
+pred.indices.spl<-as.data.frame(pred.indices.spl)
+names(pred.indices.spl)<- c('country','state','time')
+reg_mean2<-cbind.data.frame(pred.indices.spl,t(reg_mean))
+reg_mean_m<-melt(reg_mean2, id=c('time','country','state'))
+reg_mean_c<-acast(reg_mean_m, variable~time~country~state)
+preds.q<-apply(reg_mean_c,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
+dimnames(preds.q)[[2]]<- as.numeric(as.character(dimnames(preds.q)[[2]]))
 
-preds<-array(NA,dim=c(nrow(betas.m1), nrow(spl.t.std), ncol(betas.m1)))
-dimnames(preds)[[3]]<-beta.labs.extract
-
-for(i in 1:nrow(betas.m1)){ #by iteration
-  #ds.select 
-  for(j in 1:ncol(betas.m1[i,, drop=FALSE] )){
-   # print(i)
-    #print(j)
-    spl.sub<-as.matrix(spl.t.std[1:ts.length.vec[j], ,drop=FALSE])
-    preds[i,1:ts.length.vec[j],j]<-(spl.sub[,1, drop=FALSE] %*% betas.m1[i,j, drop=FALSE] 
-                                    +spl.sub[,2, drop=FALSE] %*% betas.m2[i,j, drop=FALSE] 
-                                    +spl.sub[,3, drop=FALSE] %*% betas.m3[i,j, drop=FALSE] 
-                                    +spl.sub[,4, drop=FALSE] %*% betas.m4[i,j, drop=FALSE] 
-                                    +spl.sub[,5, drop=FALSE] %*% betas.m5[i,j, drop=FALSE] )
-      }
+#Remove bias term (intercept)
+unbias<-array(NA, dim=dim(reg_mean_c))
+for(i in 1:length(countries)){
+  for(j in 1:N.states[i]){
+    unbias[,,i,j]<- -beta1[,beta1.lab.spl$country==i & beta1.lab.spl$state==j ]+ reg_mean_c[,,i,j] 
+  }
 }
-preds.q<-as.data.frame(t(apply(preds,c(2,3),quantile, probs=c(0.5),na.rm=TRUE)))
-preds.ucl<-as.data.frame(apply(preds,c(2,3),quantile, probs=c(0.975),na.rm=TRUE))
-preds.lcl<-as.data.frame(apply(preds,c(2,3),quantile, probs=c(0.025),na.rm=TRUE))
-saveRDS(preds, file=paste0(output_directory,"reg_mean_with_pooling bsplines.rds"))
-saveRDS(state.labels, file=paste0(output_directory,"state labels.rds"))
+unbias.q<-apply(unbias,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
+
+par(mfrow=c(5,6), mar=c(4,2,1,1))
+for(i in 1:length(countries)){
+  for(j in 1:N.states[i]){
+  plot.data<-t(unbias.q[,,i,j])
+  plot.data.t<-as.numeric(dimnames(preds.q)[[2]])
+  plot.data<-plot.data[order(plot.data.t),]
+  matplot( plot.data,type='l', ylim=c(-0.5,0.5), col='gray', lty=c(2,1,2), bty='l')
+  abline(h=0)
+  title(countries[i])
+  }
+}
+
+
+
+
+
 
 ###Remove bias term (intercept)
 preds.nobias<-array(NA,dim=c(nrow(betas.m1), nrow(spl.t.std), ncol(betas.m1)))

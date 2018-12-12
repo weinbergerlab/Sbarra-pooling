@@ -2,72 +2,65 @@
 ##### JAGS (Just Another Gibbs Sampler) model #####
 ###################################################
 model_string<-"
-model{
-  for(i in 1:n.countries){
-    for(j in 1:N.states[i]){
-        #################
-        #Observation model
-        #################
-        w_hat[1:ts.length[i,j], j,i] ~ dmnorm(w_true[i,j, 1:ts.length[i,j]], log_rr_prec_all[1:ts.length[i,j], 1:ts.length[i,j], j,i])
-        #################
-        #Model of 'true' time series data
-        #################
-        w_true[i,j, 1:ts.length[i,j]] ~ dmnorm(reg_mean[i,j, 1:ts.length[i,j]], w_true_cov_inv[i,j, 1:ts.length[i,j], 1:ts.length[i,j]])
-      for(t in 1:ts.length[i,j] ){    
-      ##################### 
-      #CHANGE POINT MODEL #
-      #####################
-      reg_mean[i,j, t]<-(beta[i,j, 1] 
-            + step(t-cp1[i,j])*(1-step(t-cp2[i,j]))*beta[i,j, 2]*(t-cp1[i,j]) #Slope for period between CP1 and CP2
-            + step(t-cp2[i,j])*beta[i,j, 2]*(cp2[i,j]-cp1[i,j])
-            )
-       }
-      for(k1 in 1:ts.length[i,j]){
-        for(k2 in 1:ts.length[i,j]){
-        w_true_cov_inv[i,j,k1,k2]<-ifelse(k1==k2, w_true_var_inv[i,j], 0)
-        }
-      }
-    w_true_var_inv[i,j]<-1/(w_true_sd[i,j]*w_true_sd[i,j])
-    w_true_sd[i,j] ~ dunif(0, 1000)
 
-    #In beta matrix, beta1=intercept, beta2=slope, beta3=changepoint, beta4=
-    #This ensures CP[2] is after CP1
-      cp1[i,j]<-exp(beta[i,j, 3])
-      cp2.add[i,j]<-exp(beta[i,j, 4])
-      cp2[i,j]<-cp1[i,j] +cp2.add[i,j]
-    
-    ##############################################################
-    #Second Stage Statistical Model
-    ##############################################################
-    beta[i,j, 1:p] ~ dmnorm(mu1[i,j, 1:p], Sigma_inv[i, 1:p, 1:p])
-for(k in 1:p){
-    mu1[i,j,k] <- z[i,j, 1:q]%*%gamma[i,k, 1:q]
+model{
+
+for(i in 1:n.countries){
+for(j in 1:n.states[i]){
+##################
+#Observation model
+##################
+w_hat[1:ts.length[i,j], j,i] ~ dmnorm(w_true[i,j, 1:ts.length[i,j]], log_rr_prec_all[1:ts.length[i,j], 1:ts.length[i,j], j,i])
+
+#################################
+#Model of 'true' time series data
+#################################
+w_true[i,j, 1:ts.length[i,j]] ~ dmnorm(reg_mean[i,j, 1:ts.length[i,j]], w_true_cov_inv[i,j, 1:ts.length[i,j], 1:ts.length[i,j]])
+
+for(v in 1:ts.length[i,j]){       
+##################### 
+#CHANGE POINT MODEL #
+#####################
+reg_mean[i,j,v]<-beta[i,j,1] +(step(time.index[v] - cp1[i,j])*(1 - step(time.index[v] - cp2[i,j]))*beta[i,j,2]*(time.index[v] - cp1[i,j]) +
+step(time.index[v] - cp2[i,j])*beta[i,j,2]*(cp2[i,j] - cp1[i,j]))
+
+}
+
+for(k1 in 1:ts.length[i,j]){
+for(k2 in 1:ts.length[i,j]){
+w_true_cov_inv[i,j,k1,k2]<-ifelse(k1==k2, w_true_var_inv[i,j], 0)
 }
 }
-for(k in 1:p){
-###############################################################
+
+w_true_var_inv[i,j]<-1/(w_true_sd[i,j]*w_true_sd[i,j])
+w_true_sd[i,j] ~ dunif(0, 1000)
+
+cp1[i,j]<-exp(beta[i,j,3])
+cp2.add[i,j]<-exp(beta[i,j,4])
+cp2[i,j]<-cp1[i,j] +cp2.add[i,j]
+
+###########################################################
+#Second Stage Statistical Model
+###########################################################
+beta[i,j, 1:4] ~ dmnorm(gamma[i, 1:4], Omega_inv[1:4, 1:4])
+}
+
+########################################################
 #Third Stage Statistical Model
-###############################################################
-gamma[i,k, 1:q] ~ dmnorm(mu2[i,k, 1:q], Omega_inv[k, 1:q, 1:q])
-for(l in 1:q){
-mu2[i,k,l] <- w[i, 1:m]%*%theta[k,l, 1:m]
+########################################################
+gamma[i, 1:4] ~ dmnorm(lambda[1:4], Sigma_inv[1:4, 1:4])
 }
-} 
-Sigma_inv[i, 1:p, 1:p] ~ dwish(I_Sigma[1:p, 1:p], (p + 1))
-Sigma[i, 1:p, 1:p] <- inverse(Sigma_inv[i, 1:p, 1:p])
-}
-#############################################################
+
+#######################################################
 #Remaining Prior Distributions
-#############################################################
-##IF q=1 (intercept only for predictors of slopes and intercepts)
-for(k in 1:p){
-Omega_inv[k, 1:q, 1:q] <- 1/(Omega[k, 1:q, 1:q]*Omega[k, 1:q, 1:q])
-Omega[k, 1:q, 1:q] ~ dunif(0, 1000)
-for(l in 1:q){
-for(r in 1:m){
-theta[k,l,r] ~ dnorm(0, 0.0001)
-  }
- }
- }
+#######################################################
+Omega_inv[1:4, 1:4] ~ dwish(I_Omega[1:4, 1:4], (4 + 1))
+Omega[1:4, 1:4]<-inverse(Omega_inv[1:4, 1:4])
+Sigma_inv[1:4, 1:4] ~ dwish(I_Sigma[1:4, 1:4], (4 + 1))
+Sigma[1:4, 1:4]<-inverse(Sigma_inv[1:4, 1:4])
+for(j in 1:4){
+lambda[j] ~ dnorm(0, 0.0001)
+}
+
 }
 "
