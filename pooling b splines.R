@@ -107,6 +107,39 @@ ggplot(data=plot.data, aes(x=median.cp, y=order2, color=country2)) +
   # theme(legend.position = "none")+
   scale_color_manual(values=c('#7fc97f','#beaed4', '#fdc086','#ffff99','#386cb0', '#f0027f','#bf5b17'))
 
+############################
+#Extract slope
+beta2<-posterior_samples[[1]][,grep("^beta.*,2]",dimnames(posterior_samples[[1]])[[2]])] #Intercept
+slp1<-beta2 #Intercept
+beta2.lab<-x.func(dimnames(beta2)[[2]]) 
+beta2.lab.spl<-as.data.frame(matrix(as.numeric(as.character(unlist(strsplit(beta2.lab, ',',fixed=TRUE)))), ncol=3, byrow=TRUE))
+names(beta2.lab.spl)<-c('country','state')
+for(i in c(1:9)){hist(beta2[,i])}
+quant.slp1<-t(apply(beta2,2,quantile, probs=c(0.025,0.5,0.975)))
+var.slp1<-apply(beta2,2,var)
+slp1.lab<-x.func(dimnames(quant.slp1)[[1]]) 
+slp1.lab.spl<-as.data.frame(matrix(as.numeric(as.character(unlist(strsplit(slp1.lab, ',',fixed=TRUE)))), ncol=3, byrow=TRUE))
+names(slp1.lab.spl)<-c('country','state')
+par(mfrow=c(2,2))
+plot(y=1:nrow(quant.slp1), x=quant.slp1[,'50%'], bty='l')
+library(ggplot2)
+plot.data<-cbind.data.frame('strata'=1:nrow(quant.slp1),'median.slp'=quant.slp1[,'50%'], 'inv.var.slp'=1/var.slp1,beta2.lab.spl)
+plot.data<-plot.data[order(plot.data$country),]
+plot.data$order2<-1:nrow(plot.data)
+plot.data$country2<-NA
+for(i in 1:length(countries)){plot.data$country2[plot.data$country==i] <-countries[i] }
+ggplot(data=plot.data, aes(x=median.slp, y=order2, color=country2)) +
+  geom_point(aes(size=inv.var.slp)) +
+  scale_size_continuous(range=c(1,15)) +
+  theme_bw()+
+  guides( size = FALSE)+
+  # theme(legend.position = "none")+
+  scale_color_manual(values=c('#7fc97f','#beaed4', '#fdc086','#ffff99','#386cb0', '#f0027f','#bf5b17'))
+##########################################
+
+#Relationship between change point location and slope
+par(mfrow=c(1,1), mar=c(4,4,1,1))
+plot(quant.slp1[,'50%'], quant.cp1[,'50%'], col=beta2.lab.spl$country,bty='l', ylab="Change point", xlab="Slope")
 
 ##melt and cast predicted values into 4D array N,t,i,j array
 reg_mean<-posterior_samples[[1]][,grep("reg_mean",dimnames(posterior_samples[[1]])[[2]])]
@@ -150,8 +183,8 @@ saveRDS(preds.unbias.q, file=paste0(output_directory,"reg_mean_with_pooling cp n
 
 
 ##small multiples plot
-country=preds.unbias.q[,1]
-state=beta.labs.extract2[,2]
+country=pred.indices.spl[,1]
+state=pred.indices.spl[,2]
 t=beta.labs.extract2[,3]
 preds.nobias.q.alt<-apply(preds.nobias,c(2,3),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
 preds.nobias.q.alt<-preds.nobias.q.alt[,,order(country,state )]  #sort by country, then state
