@@ -42,10 +42,11 @@ update(model_jags,
 # dic.mod1a
 
 posterior_samples<-coda.samples(model_jags, 
-                                variable.names=c("reg_mean", 'cp1','cp2',"beta", "sigma_regression", "w_true", "alpha.C", "beta_k_q",'beta_prec_ts'),
+                                variable.names=c("reg_mean",'reg_unbias' ,'cp1','cp2',"beta", "sigma_regression", "w_true", "alpha.C", "beta_k_q",'beta_prec_ts'),
                                 thin=10,
                                 n.iter=50000)
 #plot(posterior_samples, ask=TRUE)
+saveRDS(posterior_samples,paste0(output_directory,'posterior_samples_CP.rds'))
 
 
 ##########################################################################################
@@ -91,57 +92,48 @@ reg_mean_c<-acast(reg_mean_m, variable~time~country~state)
 preds.q<-apply(reg_mean_c,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
 dimnames(preds.q)[[2]]<- as.numeric(as.character(dimnames(preds.q)[[2]]))
 
-#Remove bias term (intercept)
-unbias<-array(NA, dim=dim(reg_mean_c))
-for(i in 1:length(countries)){
-  for(j in 1:N.states[i]){
-    unbias[,,i,j]<- -beta1[,beta1.lab.spl$country==i & beta1.lab.spl$state==j ]+ reg_mean_c[,,i,j] 
-  }
-}
-unbias.q<-apply(unbias,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
+#Unbias
+reg_unbias<-posterior_samples[[1]][,grep("reg_unbias",dimnames(posterior_samples[[1]])[[2]])]
+pred1<-reg_unbias
+pred.indices<- x.func(dimnames(pred1)[[2]]) 
+pred.indices.spl<-matrix(unlist(strsplit(pred.indices, ',',fixed=TRUE)), ncol=3, byrow=TRUE)
+pred.indices.spl<-as.data.frame(pred.indices.spl)
+names(pred.indices.spl)<- c('country','state','time')
+reg_unbias2<-cbind.data.frame(pred.indices.spl,t(reg_unbias))
+reg_unbias_m<-melt(reg_unbias2, id=c('time','country','state'))
+reg_unbias_c<-acast(reg_unbias_m, variable~time~country~state)
+reg_unbias_c<-reg_unbias_c[,order(as.numeric(dimnames(reg_unbias_c)[[2]])),order(as.numeric(dimnames(reg_unbias_c)[[3]])),order(as.numeric(dimnames(reg_unbias_c)[[4]]))]
+preds.unbias.q<-apply(reg_unbias_c,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
+dimnames(preds.unbias.q)[[2]]<- as.numeric(as.character(dimnames(preds.unbias.q)[[2]]))
+
+# 
+# reg_mean_c<-reg_mean_c[,order(as.numeric(dimnames(reg_mean_c)[[2]])),order(as.numeric(dimnames(reg_mean_c)[[3]])),order(as.numeric(dimnames(reg_mean_c)[[4]]))]
+# unbias<-array(NA, dim=dim(reg_mean_c))
+# #Remove bias term (intercept)
+# for(i in 1:length(countries)){
+#   for(j in 1:N.states[i]){
+#     int1<-beta1[,beta1.lab.spl$country==i & beta1.lab.spl$state==j ]
+#     unbias[,,i,j]<- apply(reg_mean_c[,,i,j],2,function(x) x+int1) 
+#   }
+# }
+# unbias.q<-apply(unbias,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
 
 par(mfrow=c(5,6), mar=c(4,2,1,1))
 for(i in 1:length(countries)){
   for(j in 1:N.states[i]){
-  plot.data<-t(unbias.q[,,i,j])
-  plot.data.t<-as.numeric(dimnames(preds.q)[[2]])
-  plot.data<-plot.data[order(plot.data.t),]
-  matplot( plot.data,type='l', ylim=c(-0.5,0.5), col='gray', lty=c(2,1,2), bty='l')
+  plot.data<-t(preds.unbias.q[,,i,j])
+  matplot( ((1:tot_time)-pre.vax.time), plot.data,type='l',yaxt='n', xlim=c(0, max.time.points),  ylim=c(-0.7,0.7), col='gray', lty=c(2,1,2), bty='l')
   abline(h=0)
+  axis(side=2, at=c(-0.7,-0.35,0,0.35,0.7), las=1,labels=round(exp(c(-0.7,-0.35,0,0.35,0.7)),1 ))
+ # abline(v=0)
   title(countries[i])
   }
 }
-
-
-
-
-
-
-###Remove bias term (intercept)
-preds.nobias<-array(NA,dim=c(nrow(betas.m1), nrow(spl.t.std), ncol(betas.m1)))
-dimnames(preds.nobias)[[3]]<-beta.labs.extract
-for(i in 1:nrow(betas.m1)){ #by iteration
-  #ds.select 
-  for(j in 1:ncol(betas.m1[i,, drop=FALSE] )){
-    # print(i)
-    #print(j)
-    spl.sub<-as.matrix(spl.t.std[1:ts.length.vec[j], ,drop=FALSE])
-    preds.nobias[i,1:ts.length.vec[j],j]<-(spl.sub[,2, drop=FALSE] %*% betas.m2[i,j, drop=FALSE] 
-                                    +spl.sub[,3, drop=FALSE] %*% betas.m3[i,j, drop=FALSE] 
-                                    +spl.sub[,4, drop=FALSE] %*% betas.m4[i,j, drop=FALSE] 
-                                    +spl.sub[,5, drop=FALSE] %*% betas.m5[i,j, drop=FALSE]  )
-  }
-}
-preds.nobias.q<-as.data.frame(t(apply(preds.nobias,c(2,3),quantile, probs=c(0.5),na.rm=TRUE)))
-preds.nobias.ucl<-as.data.frame(apply(preds.nobias,c(2,3),quantile, probs=c(0.975),na.rm=TRUE))
-preds.nobias.lcl<-as.data.frame(apply(preds.nobias,c(2,3),quantile, probs=c(0.025),na.rm=TRUE))
-
-saveRDS(preds.nobias, file=paste0(output_directory,"reg_mean_with_pooling bsplines nobias.rds"))
-
+saveRDS(preds.unbias.q, file=paste0(output_directory,"reg_mean_with_pooling cp nobias.rds"))
 
 
 ##small multiples plot
-country=beta.labs.extract2[,1]
+country=preds.unbias.q[,1]
 state=beta.labs.extract2[,2]
 t=beta.labs.extract2[,3]
 preds.nobias.q.alt<-apply(preds.nobias,c(2,3),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
@@ -156,7 +148,7 @@ cols.plot<- c('#e41a1c','#377eb8','#4daf4a','#984ea3', '#ff7f00','#a65628','#f78
 shiny.ds<-list(preds.nobias.q.alt,country2 ,state2,cols.plot,country.labs2)
 names(shiny.ds)<-c('preds.nobias.q.alt','country2' ,'state2','cols.plot','country.labs2')
 saveRDS(shiny.ds,paste0(output_directory,'shiny.small.multiples.rds'))
-tiff(paste0(output_directory,'small multiple bsplines.tiff'), width = 12, height = 9, units = "in",res=200)
+tiff(paste0(output_directory,'small multiple CP.tiff'), width = 12, height = 9, units = "in",res=200)
 par(mfrow=c(10,10) , mar=c(0.5,1,0.6,0))
 for (i in 1:dim(preds.nobias.q.alt )[3]){
   y.all<- t(exp(preds.nobias.q.alt[,,i]))
@@ -181,7 +173,7 @@ dev.off()
 
 #########################
 ##PLOTS FOR FITTED VALUES, INCLUDING INTERCEPT
-tiff(paste0(output_directory,'ucl and LCL smooth with pooling josh fix all states bsplines.tiff'), width = 7, height = 4, units = "in",res=200)
+tiff(paste0(output_directory,'ucl and LCL smooth with pooling josh fix all states CP.tiff'), width = 7, height = 4, units = "in",res=200)
     par(mfrow=c(1,2))
     matplot(preds.ucl, type='l', bty='l',col='gray')
     title("Upper CrI")
@@ -214,7 +206,7 @@ tiff(paste0(output_directory, 'fix all states bspline.tiff'), width = 10.5, heig
     }
 dev.off()   
       
-tiff(paste0(output_directory,'ucl and LCL smooth with pooling josh fix all states bsplines nobias.tiff'), width = 7, height = 4, units = "in",res=200)
+tiff(paste0(output_directory,'ucl and LCL smooth with pooling josh fix all states CP nobias.tiff'), width = 7, height = 4, units = "in",res=200)
       par(mfrow=c(1,2)) 
       matplot(preds.nobias.ucl, type='l', bty='l',col='gray')
       title("Upper CrI")

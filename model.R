@@ -25,7 +25,10 @@ reg_mean[i,j,v]<-(beta[i,j,1]
 + step(time.index[v] - cp1[i,j])*(1 - step(time.index[v] - cp2[i,j]))*beta[i,j,2]*(time.index[v] - cp1[i,j]) 
 + step(time.index[v] - cp2[i,j])*beta[i,j,2]*(cp2[i,j] - cp1[i,j])
 )
-
+reg_unbias[i,j,v]<-(
+step(time.index[v] - cp1[i,j])*(1 - step(time.index[v] - cp2[i,j]))*beta[i,j,2]*(time.index[v] - cp1[i,j]) 
++ step(time.index[v] - cp2[i,j])*beta[i,j,2]*(cp2[i,j] - cp1[i,j])
+)
 }
 
 for(k1 in 1:ts.length[i,j]){
