@@ -79,6 +79,35 @@ beta1.lab<-x.func(dimnames(beta1)[[2]])
 beta1.lab.spl<-as.data.frame(matrix(as.numeric(as.character(unlist(strsplit(beta1.lab, ',',fixed=TRUE)))), ncol=3, byrow=TRUE))
 names(beta1.lab.spl)<-c('country','state')
 
+#Extract first change point time:
+beta3<-posterior_samples[[1]][,grep("^beta.*,3]",dimnames(posterior_samples[[1]])[[2]])] #Intercept
+cp1<-max.time.points*exp(beta3) #Intercept
+beta3.lab<-x.func(dimnames(beta3)[[2]]) 
+beta3.lab.spl<-as.data.frame(matrix(as.numeric(as.character(unlist(strsplit(beta3.lab, ',',fixed=TRUE)))), ncol=3, byrow=TRUE))
+names(beta3.lab.spl)<-c('country','state')
+for(i in c(1:9)){hist(beta3[,i])}
+quant.cp1<-t(max.time.points*exp(apply(beta3,2,quantile, probs=c(0.025,0.5,0.975))))
+var.cp1<-apply(beta3,2,var)
+cp1.lab<-x.func(dimnames(quant.cp1)[[1]]) 
+cp1.lab.spl<-as.data.frame(matrix(as.numeric(as.character(unlist(strsplit(cp1.lab, ',',fixed=TRUE)))), ncol=3, byrow=TRUE))
+names(cp1.lab.spl)<-c('country','state')
+par(mfrow=c(2,2))
+plot(y=1:nrow(quant.cp1), x=quant.cp1[,'50%'], bty='l')
+library(ggplot2)
+plot.data<-cbind.data.frame('strata'=1:nrow(quant.cp1),'median.cp'=quant.cp1[,'50%'], 'inv.var.cp'=1/var.cp1,beta3.lab.spl)
+plot.data<-plot.data[order(plot.data$country),]
+plot.data$order2<-1:nrow(plot.data)
+plot.data$country2<-NA
+for(i in 1:length(countries)){plot.data$country2[plot.data$country==i] <-countries[i] }
+ggplot(data=plot.data, aes(x=median.cp, y=order2, color=country2)) +
+  geom_point(aes(size=inv.var.cp)) +
+  scale_size_continuous(range=c(1,15)) +
+  theme_bw()+
+  guides( size = FALSE)+
+  # theme(legend.position = "none")+
+  scale_color_manual(values=c('#7fc97f','#beaed4', '#fdc086','#ffff99','#386cb0', '#f0027f','#bf5b17'))
+
+
 ##melt and cast predicted values into 4D array N,t,i,j array
 reg_mean<-posterior_samples[[1]][,grep("reg_mean",dimnames(posterior_samples[[1]])[[2]])]
 pred1<-reg_mean
@@ -105,18 +134,6 @@ reg_unbias_c<-acast(reg_unbias_m, variable~time~country~state)
 reg_unbias_c<-reg_unbias_c[,order(as.numeric(dimnames(reg_unbias_c)[[2]])),order(as.numeric(dimnames(reg_unbias_c)[[3]])),order(as.numeric(dimnames(reg_unbias_c)[[4]]))]
 preds.unbias.q<-apply(reg_unbias_c,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
 dimnames(preds.unbias.q)[[2]]<- as.numeric(as.character(dimnames(preds.unbias.q)[[2]]))
-
-# 
-# reg_mean_c<-reg_mean_c[,order(as.numeric(dimnames(reg_mean_c)[[2]])),order(as.numeric(dimnames(reg_mean_c)[[3]])),order(as.numeric(dimnames(reg_mean_c)[[4]]))]
-# unbias<-array(NA, dim=dim(reg_mean_c))
-# #Remove bias term (intercept)
-# for(i in 1:length(countries)){
-#   for(j in 1:N.states[i]){
-#     int1<-beta1[,beta1.lab.spl$country==i & beta1.lab.spl$state==j ]
-#     unbias[,,i,j]<- apply(reg_mean_c[,,i,j],2,function(x) x+int1) 
-#   }
-# }
-# unbias.q<-apply(unbias,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
 
 par(mfrow=c(5,6), mar=c(4,2,1,1))
 for(i in 1:length(countries)){
