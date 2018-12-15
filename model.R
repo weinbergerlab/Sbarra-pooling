@@ -64,7 +64,7 @@ Omega[1:4, 1:4]<-inverse(Omega_inv[1:4, 1:4])
 Sigma_inv[1:4, 1:4] ~ dwish(I_Sigma[1:4, 1:4], (4 + 1))
 Sigma[1:4, 1:4]<-inverse(Sigma_inv[1:4, 1:4])
 for(j in 1:4){
-lambda[j] ~ dnorm(0, 1)
+lambda[j] ~ dnorm(0, 1e-4) 
 }
 
 }
