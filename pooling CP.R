@@ -177,18 +177,26 @@ reg_unbias_c<-reg_unbias_c[,order(as.numeric(dimnames(reg_unbias_c)[[2]])),order
 preds.unbias.q<-apply(reg_unbias_c,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
 dimnames(preds.unbias.q)[[2]]<- as.numeric(as.character(dimnames(preds.unbias.q)[[2]]))
 
-for(i in 4:length(countries)){
-tiff(paste0(output_directory,countries[i],"RR trajecory by state.tiff"))
-par(mfrow=c(5,6), mar=c(4,2,1,1))
-  for(j in 1:N.states[i]){
-  plot.data<-t(preds.unbias.q[,,i,j])
-  matplot( ((1:tot_time)-pre.vax.time), plot.data,type='l',yaxt='n', xlim=c(0, max.time.points),  ylim=c(-0.7,0.7), col='gray', lty=c(2,1,2), bty='l')
-  abline(h=0)
-  axis(side=2, at=c(-0.7,-0.35,0,0.35,0.7), las=1,labels=round(exp(c(-0.7,-0.35,0,0.35,0.7)),1 ))
- # abline(v=0)
-  title(countries[i])
-  }
-dev.off()
+######################
+for(i in c(1:length(countries))){
+  tiff(paste0(output_directory,countries[i],"RR trajecory by state.tiff"))
+  par(mfrow=c(5,6), mar=c(4,2,1,1))
+    for(j in 1:N.states[i]){
+        plot.data<-t(preds.unbias.q[,,i,j])
+        plot.data2<-plot.data[complete.cases(plot.data),]
+        final.rr<-paste0(round(exp(plot.data2[nrow(plot.data2),'50%', drop=F]),2),
+                         ' (' ,round(exp(plot.data2[nrow(plot.data2),'2.5%', drop=F]),2),',',
+                         round(exp(plot.data2[nrow(plot.data2),'97.5%', drop=F]),2),")")
+        start.post<-which( ((1:tot_time)-pre.vax.time)==0)
+        matplot( ((1:tot_time)-pre.vax.time), plot.data,type='l',yaxt='n', xlab='Months post-PCV',xlim=c(0, max.time.points),  ylim=c(-0.7,0.7), col='gray', lty=c(2,1,2), bty='l')
+        abline(h=0)
+        axis(side=2, at=c(-0.7,-0.35,0,0.35,0.7), las=1,labels=round(exp(c(-0.7,-0.35,0,0.35,0.7)),1 ))
+       # abline(v=0)
+        title(countries[i])
+        text(start.post, log(2), final.rr)
+      
+    }
+  dev.off()
 }
 saveRDS(preds.unbias.q, file=paste0(output_directory,"reg_mean_with_pooling cp nobias.rds"))
 
@@ -333,39 +341,39 @@ dev.off()
 save(list = ls(all.names = TRUE),file=paste0(output_directory,"pooling no covars all states b splines.RData"),envir = .GlobalEnv)
 
 
-
-#Project estimates back onto original time series
-##Extract Fiji
-fiji.dates<-seq.Date(    from=as.Date('2012-09-01'),to= as.Date('2015-12-01'), by='month')
-fiji.preds<-t(preds[,1:length(fiji.dates),which(countries=="Fiji")])
-fiji.raw<-read.csv('C:\\Users\\DMW63\\Desktop\\My documents h\\GATES\\CausalImpact code\\Input data\\Fiji\\prelog_Fiji_processed_data4.csv')
-fiji.raw2<-fiji.raw[fiji.raw$age_group=='ac_pneumonia_Age1_0',]
-fill.length<- nrow(fiji.raw2) - length(fiji.dates)
-pre.fill<-matrix(0, nrow=fill.length, ncol=ncol(fiji.preds))
-fiji.preds.fill<-exp(rbind(pre.fill,fiji.preds ))
-counterfact<- 1/fiji.preds.fill * fiji.raw2$pneuvar
-countfact.ci<-t(apply(counterfact,1,quantile, probs=c(0.025,0.5,0.975)))
-countfact.ci[1:fill.length,] <-NA
-#Plot the observed vs counterfactual cases
-matplot(countfact.ci, type='l', col='gray', lty=1)
-points(fiji.raw2$pneuvar)
-dev.off()
-
-#Plot the RR with CIs
-preds.ci<-t(apply(fiji.preds,1,quantile, probs=c(0.025,0.5,0.975)))
-matplot(exp(preds.ci), type='l', col='gray', lty=1, bty='l')
-abline(h=1, lty=2, col='gray')
-
-#Aggregate the counterfactual and observed by year
- fiji.years<-year(fiji.dates)
- fiji.preds.year.split<-lapply(split(counterfact[-c(1:fill.length),], fiji.years), matrix , ncol=ncol(fiji.preds)  )
- fiji.preds.year.sum<-sapply(fiji.preds.year.split , function(x) apply(x,2, sum) ) 
- fiji.preds.year.sum.length<-sapply(fiji.preds.year.split , function(x) nrow(x) ) 
- fiji.preds.year.sum.q<-t(apply(fiji.preds.year.sum , 2, quantile, probs=c(0.025,0.5,0.975)) )*12/fiji.preds.year.sum.length
-obs.year<- aggregate( fiji.raw2$pneuvar[-c(1:fill.length)], by=list(fiji.years), sum)[,2]*12/fiji.preds.year.sum.length
-tiff(paste0(output_directory,'/project onto original aggregated time series fiji.tiff'), width = 10.5, height = 4, units = "in",res=200)
- par(mfrow=c(1,1))
-  matplot(unique(fiji.years), fiji.preds.year.sum.q, type='l', col='gray', bty='l', ylim=c(0, max(fiji.preds.year.sum.q)))
-  points(unique(fiji.years), obs.year, pch=16, col='black')
-  dev.off()
-  #
+# 
+# #Project estimates back onto original time series
+# ##Extract Fiji
+# fiji.dates<-seq.Date(    from=as.Date('2012-09-01'),to= as.Date('2015-12-01'), by='month')
+# fiji.preds<-t(preds[,1:length(fiji.dates),which(countries=="Fiji")])
+# fiji.raw<-read.csv('C:\\Users\\DMW63\\Desktop\\My documents h\\GATES\\CausalImpact code\\Input data\\Fiji\\prelog_Fiji_processed_data4.csv')
+# fiji.raw2<-fiji.raw[fiji.raw$age_group=='ac_pneumonia_Age1_0',]
+# fill.length<- nrow(fiji.raw2) - length(fiji.dates)
+# pre.fill<-matrix(0, nrow=fill.length, ncol=ncol(fiji.preds))
+# fiji.preds.fill<-exp(rbind(pre.fill,fiji.preds ))
+# counterfact<- 1/fiji.preds.fill * fiji.raw2$pneuvar
+# countfact.ci<-t(apply(counterfact,1,quantile, probs=c(0.025,0.5,0.975)))
+# countfact.ci[1:fill.length,] <-NA
+# #Plot the observed vs counterfactual cases
+# matplot(countfact.ci, type='l', col='gray', lty=1)
+# points(fiji.raw2$pneuvar)
+# dev.off()
+# 
+# #Plot the RR with CIs
+# preds.ci<-t(apply(fiji.preds,1,quantile, probs=c(0.025,0.5,0.975)))
+# matplot(exp(preds.ci), type='l', col='gray', lty=1, bty='l')
+# abline(h=1, lty=2, col='gray')
+# 
+# #Aggregate the counterfactual and observed by year
+#  fiji.years<-year(fiji.dates)
+#  fiji.preds.year.split<-lapply(split(counterfact[-c(1:fill.length),], fiji.years), matrix , ncol=ncol(fiji.preds)  )
+#  fiji.preds.year.sum<-sapply(fiji.preds.year.split , function(x) apply(x,2, sum) ) 
+#  fiji.preds.year.sum.length<-sapply(fiji.preds.year.split , function(x) nrow(x) ) 
+#  fiji.preds.year.sum.q<-t(apply(fiji.preds.year.sum , 2, quantile, probs=c(0.025,0.5,0.975)) )*12/fiji.preds.year.sum.length
+# obs.year<- aggregate( fiji.raw2$pneuvar[-c(1:fill.length)], by=list(fiji.years), sum)[,2]*12/fiji.preds.year.sum.length
+# tiff(paste0(output_directory,'/project onto original aggregated time series fiji.tiff'), width = 10.5, height = 4, units = "in",res=200)
+#  par(mfrow=c(1,1))
+#   matplot(unique(fiji.years), fiji.preds.year.sum.q, type='l', col='gray', bty='l', ylim=c(0, max(fiji.preds.year.sum.q)))
+#   points(unique(fiji.years), obs.year, pch=16, col='black')
+#   dev.off()
+#   #
