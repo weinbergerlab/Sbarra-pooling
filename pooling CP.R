@@ -13,8 +13,9 @@ ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
 
 ####SET INPUTS PARAMETERS#############################################################################################################
 #setwd('C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/')
-countries<-c('US', 'Fiji','Denmark' ,'Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
-subnational=c(0,0,0,1,1,1,1) #Vector indicating whether dataset contains subnational estmatesmax.time.points=48
+#countries<-c('US', 'Fiji','Denmark' ,'Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
+countries<-c('Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
+subnational=c(1,1,1,1) #Vector indicating whether dataset contains subnational estmatesmax.time.points=48
 pre.vax.time<-12 #how many to use when anchoring at t=0
 max.time.points<-48
 tot_time<-max.time.points+pre.vax.time
@@ -28,7 +29,7 @@ model_jags<-jags.model(textConnection(model_string),
                       data=list('n.countries' = N.countries, 
                                 'n.states' = N.states, 
                                  'w_hat' = log_rr_q_all,
-                                 'log_rr_prec_all' = log_rr_prec_all, 
+                                 'w_hat_prec' = log_rr_prec_diag_all, 
                                 'ts.length' = ts.length_mat,
                                 'I_Omega'= I_Omega,
                                 'max.time.points'=max.time.points,

@@ -1,6 +1,7 @@
 N.countries=length(countries)
 log.rr.compile <-vector("list", length(countries)) 
 log.rr.prec.mat.all<-vector("list", length(countries)) 
+log.rr.prec.diag.mat.all<-vector("list", length(countries)) 
 N.states<-rep(NA, N.countries)
 
 for (c in 1:N.countries){
@@ -42,6 +43,8 @@ for (c in 1:N.countries){
   index.post<-which(time>=(eval_period[1] %m-% months(pre.vax.time)) & time<=eval_period[2])  
   if (length(index.post)>tot_time){ index.post<-index.post[1:tot_time] } 
   
+  
+  
   if(subnational[c]==0){  #National-level only
     # limit by age group
     keep.index<-which(dimnames(log_rr_q)[[3]]==keep.grp)
@@ -71,22 +74,30 @@ for (c in 1:N.countries){
     log_rr_q <-log_rr_q[index.post,,select.obs.state]
     #log_rr_sd <-log_rr_sd[,index.post,]
     log_rr_prec<-log_rr_prec[index.post,index.post,select.obs.state]
+    log_rr_prec.diag<- apply(log_rr_prec, 3, diag) #Just get diagonal of the matrix
+    
   }
   N.states[c]<-dim(log_rr_q)[3]
   log.rr.compile[[c]]<-log_rr_q
   log.rr.prec.mat.all[[c]]<-log_rr_prec
+  log.rr.prec.diag.mat.all[[c]]<-log_rr_prec.diag
+  
 }
 
 ##Combine together estimates from each country into a single array
 log_rr_q_all<-array(NA, dim=c(tot_time,max(N.states),N.countries))
 state.labels<-array(NA, dim=dim(log_rr_q_all)[c(2:3)]   )
 log_rr_prec_all<-array(NA, dim=c(tot_time,tot_time,max(N.states),N.countries))
+log_rr_prec_diag_all<-array(NA, dim=c(tot_time,max(N.states),N.countries))
+
 ts.length<-rep(NA, times=N.countries)
 for(i in 1:N.countries){
   for(j in 1:N.states[i]){
     log_rr_q_all[1:nrow(log.rr.compile[[i]]),j,i]<-log.rr.compile[[i]][,2,j] #Extract the median
     log_rr_prec_all[1:dim(log.rr.prec.mat.all[[i]])[1],1:dim(log.rr.prec.mat.all[[i]])[1],j,i]<-log.rr.prec.mat.all[[i]][,,j]
-  }
+    log_rr_prec_diag_all[1:dim(log.rr.prec.diag.mat.all[[i]])[1],j,i]<-log.rr.prec.diag.mat.all[[i]][,j]
+    
+      }
   ts.length[i]<-nrow(log.rr.compile[[i]])
   if(N.states[i]>1){
     state.labels[1:N.states[i] ,i]<-dimnames(log.rr.compile[[i]])[[3]]
