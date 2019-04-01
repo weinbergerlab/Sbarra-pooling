@@ -38,7 +38,7 @@ w_true_sd[i,j] ~ dunif(0, 100)
 cp1[i,j]<-exp(beta[i,j,3])
 cp2.add[i,j]<-exp(beta[i,j,4])
 cp2[i,j]<-cp1[i,j] +cp2.add[i,j]  + 1/max.time.points   #ensure Cp2 is at least 1 unit after CP1
-
+ 
 ##############################################################
     #Second Stage Statistical Model
 ##############################################################
