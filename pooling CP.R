@@ -7,6 +7,7 @@ library(mgcv)
 library(R2jags) 
 library(splines)
 library(lubridate)
+library(stringr)
 
 output_directory<- paste0(dirname(getwd()), "/Results CP/")
 ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
