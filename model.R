@@ -39,12 +39,13 @@ cp1[i,j]<-exp(beta[i,j,3])
 cp2.add[i,j]<-exp(beta[i,j,4])
 cp2[i,j]<-cp1[i,j] +cp2.add[i,j]  + 1/max.time.points   #ensure Cp2 is at least 1 unit after CP1
 
-  ###########################################################
-      #Second Stage Statistical Model
-###########################################################
-beta[i,j, 1:4] ~ dmnorm(gamma[i, 1:4], Omega_inv[1:4, 1:4])
+##############################################################
+    #Second Stage Statistical Model
+##############################################################
+beta[i,j, 1:4] ~ dmnorm(mu1[i,j, 1:4], Omega_inv[i, 1:4, 1:4])
+for(k in 1:4){
+mu1[i,j,k] <- z[i,j, 1:q]%*%gamma[i,k, 1:q]
 }
-
 ########################################################
 #Third Stage Statistical Model
 ########################################################
