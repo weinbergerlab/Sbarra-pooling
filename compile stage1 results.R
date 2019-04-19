@@ -158,7 +158,15 @@ for(i in 1:N.countries){
 # hdi.low[hdi=="Low"]<-1
 # hdi.med<-matrix(0, nrow=nrow(hdi),ncol=ncol(hdi))
 # hdi.med[hdi=="Med"]<-1
+hdi1<-read.csv('./covariate data/hdi.csv')
+hdi1<-hdi1[,c('brazil','mexico', 'ecuador','chile')]
+hdi1.spl<-split(t(hdi1) ,1:ncol(hdi1))
+library(dummies)
+hdi1<-sapply(hdi1.spl, function(x) dummies::dummy(x))
+
+##THIS NEEDS TO BE FIXED!!
 z<-array(0, dim=c(dim(log_rr_q_all)[3], dim(log_rr_q_all)[2],q))
  z[,,1]<-1 #intercept for z 
+ 
 # z[,,2]<-hdi.low #intercept for z 
 # z[,,3]<-hdi.med #intercept for z 
