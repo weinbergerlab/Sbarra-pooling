@@ -36,7 +36,6 @@ model_jags<-jags.model(textConnection(model_string),
                                 'max.time.points'=max.time.points,
                                 'time.index'=time.index,
                                 'z'=z,
-                                'q'=q,
                                 'I_Sigma'=I_Sigma), n.chains=1, n.adapt=1000) 
 
 #Posterior Sampling
