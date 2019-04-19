@@ -199,6 +199,7 @@ for(i in c(1:length(countries))){
     }
   dev.off()
 }
+names(preds.unbias.q)[[3]]<-countries
 saveRDS(preds.unbias.q, file=paste0(output_directory,"reg_mean_with_pooling cp nobias.rds"))
 
 

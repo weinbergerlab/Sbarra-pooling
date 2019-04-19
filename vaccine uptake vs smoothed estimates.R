@@ -1,14 +1,14 @@
 library(plyr)
 
-output_directory<- paste0(dirname(getwd()), "/Results/")
+output_directory<- paste0(dirname(getwd()), "/Results CP/")
 output_directory_nopool<- paste0(dirname(getwd()), "/Results nopool/")
 
 countries<-c('US', 'Fiji','Denmark' ,'Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
-preds.pool<-readRDS( file=paste0(output_directory,"reg_mean_with_pooling bsplines nobias.rds"))
+preds.pool<-readRDS( file=paste0(output_directory,"reg_mean_with_pooling cp nobias.rds"))
 preds.no.pool<-readRDS( file=paste0(output_directory_nopool,"reg_mean_with_pooling bsplines nobias.rds"))
 preds.no.pool.bias<-readRDS( file=paste0(output_directory_nopool,"reg_mean_with_pooling bsplines.rds"))
  
-state.labels<-readRDS( file=paste0(output_directory,"state labels.rds"))
+state.labels<-readRDS( file=paste0(output_directory_nopool,"state labels.rds"))
 
 cov1.br<-read.csv("C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/PCVCoverage_Brazil_paho.csv")
 cov1.br$state.id<-as.numeric(substr(as.character(cov1.br$state),1,2))
@@ -36,7 +36,7 @@ beta.labs.extract2<-matrix(as.numeric(unlist(strsplit(dimnames(preds.pool)[[3]],
 country=countries[beta.labs.extract2[,1]]
 state=beta.labs.extract2[,2]
 
-preds.pool.q<-aaply(preds.pool, c(2,3), .fun=quantile, na.rm=TRUE, probs=c(0.025,0.5,0.975))
+preds.pool.q<-aaply(preds.pool, c(2,3,4), .fun=quantile, na.rm=TRUE, probs=c(0.025,0.5,0.975))
 preds.no.pool.q<-aaply(preds.no.pool, c(2,3), .fun=quantile, na.rm=TRUE, probs=c(0.025,0.5,0.975))
 preds.no.pool.bias.q<-aaply(preds.no.pool.bias, c(2,3), .fun=quantile, na.rm=TRUE, probs=c(0.025,0.5,0.975))
 
