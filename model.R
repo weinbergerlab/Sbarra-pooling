@@ -44,24 +44,26 @@ cp2[i,j]<-cp1[i,j] +cp2.add[i,j]  + 1/max.time.points   #ensure Cp2 is at least 
 ##############################################################
 beta[i,j, 1:4] ~ dmnorm(mu1[i,j, 1:4], Omega_inv[i, 1:4, 1:4])
 for(k in 1:4){
-mu1[i,j,k] <- z[i,j, 1:q]%*%gamma[i,k, 1:q]
+mu1[i,j,k] <- z[i,j, k]*gamma[i,k]
+}
 }
 ########################################################
 #Third Stage Statistical Model
 ########################################################
 gamma[i, 1:4] ~ dmnorm(lambda[1:4], Sigma_inv[1:4, 1:4])
-}
+
 
 #######################################################
 #Remaining Prior Distributions
 #######################################################
-Omega_inv[1:4, 1:4] ~ dwish(I_Omega[1:4, 1:4], (4 + 1))
-Omega[1:4, 1:4]<-inverse(Omega_inv[1:4, 1:4])
+Omega_inv[i,1:4, 1:4] ~ dwish(I_Omega[1:4, 1:4], (4 + 1))
+Omega[i,1:4, 1:4]<-inverse(Omega_inv[i,1:4, 1:4])
+}
 Sigma_inv[1:4, 1:4] ~ dwish(I_Sigma[1:4, 1:4], (4 + 1))
 Sigma[1:4, 1:4]<-inverse(Sigma_inv[1:4, 1:4])
+
 for(j in 1:4){
 lambda[j] ~ dnorm(0, 1e-4) 
 }
-
 }
 "
