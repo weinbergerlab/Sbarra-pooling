@@ -8,7 +8,7 @@ library(R2jags)
 library(splines)
 library(lubridate)
 
-output_directory<- paste0(dirname(getwd()), "/Results CP/")
+output_directory<- paste0(dirname(getwd()), "/Results CP no hdi/")
 ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
 
 ####SET INPUTS PARAMETERS#############################################################################################################
