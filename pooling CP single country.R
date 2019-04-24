@@ -162,9 +162,13 @@ dev.off()
 ##True change point vs estimates
 tiff(paste0(output_directory,"true vs est cp.tiff"))
 par(mfrow=c(1,1), mar=c(4,4,1,1))
-plot(sim1.ds$cp.true, quant.cp1[,'50%'], pch=16, xlim=c(0,120), ylim=c(0,120),col=beta2.lab.spl$country,bty='l', ylab="Est Change point", xlab="True CP")
+plot(sim1.ds$cp.true-85, #subtract 85 because of how this was generated
+     quant.cp1[,'50%']-12,#subtract 12 because of issue with how it is defined in the model to make comparable to 'true' data 
+     pch=16, xlim=c(0,50), ylim=c(0,50),col=beta2.lab.spl$country,bty='l', ylab="Est Change point", xlab="True CP")
 abline(a=0, b=1)
 dev.off()
+
+cor(sim1.ds$cp.true-85, quant.cp1[,'50%']-12, method='spearman')
 
 
 
