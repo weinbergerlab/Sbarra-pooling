@@ -9,33 +9,38 @@ library(splines)
 library(lubridate)
 library(stringr)
 
-output_directory<- paste0(dirname(getwd()), "/Results CP/")
+output_directory<- paste0(dirname(getwd()), "/Results CP sim/")
 ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
 
 ####SET INPUTS PARAMETERS#############################################################################################################
 #setwd('C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/')
-#countries<-c('US', 'Fiji','Denmark' ,'Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
-countries<-c('Brazil_state', 'Mexico_state', 'Ecuador_state', 'Chile_state')
-subnational=c(1,1,1,1) #Vector indicating whether dataset contains subnational estmatesmax.time.points=48
+countries<-c('sim1')
+subnational=c(0) #Vector indicating whether dataset contains subnational estmatesmax.time.points=48
 pre.vax.time<-12 #how many to use when anchoring at t=0
 max.time.points<-48
 tot_time<-max.time.points+pre.vax.time
+N.countries=1
+N.states=1
 #####################################################################################################################################
 #format data
-source('compile stage1 results.R') #Read in data
-source('model.R')  #Read in model
+source('compile stage1 results sim.R') #Read in data
+source('model single country.R')  #Read in model
 
 #Run Model
+ts.length_mat<-matrix(rep(nrow(log_rr_q_all), ncol(log_rr_q_all)), nrow=1)
+log_rr_q_all<-array(log_rr_q_all, dim=c(nrow(log_rr_q_all), ncol(log_rr_q_all),1))
+log_rr_prec_diag_all<-array(log_rr_prec_diag_all, dim=c(nrow(log_rr_prec_diag_all), ncol(log_rr_prec_diag_all),1))
+
 model_jags<-jags.model(textConnection(model_string),
-                      data=list('n.countries' = N.countries, 
-                                'n.states' = N.states, 
+                      data=list(
+                                'i'=1,
+                                'n.states' = dim(log_rr_q_all)[2], 
                                  'w_hat' = log_rr_q_all,
                                  'w_hat_prec' = log_rr_prec_diag_all, 
                                 'ts.length' = ts.length_mat,
-                                'I_Omega'= I_Omega,
                                 'max.time.points'=max.time.points,
                                 'time.index'=time.index,
-                                'z'=z,
+                                #'z'=z,
                                 'I_Sigma'=I_Sigma), n.chains=1, n.adapt=1000) 
 
 #Posterior Sampling
@@ -86,6 +91,8 @@ names(beta1.lab.spl)<-c('country','state')
 #Extract first change point time:
 beta3<-posterior_samples[[1]][,grep("^beta.*,3]",dimnames(posterior_samples[[1]])[[2]])] #Intercept
 cp1<-max.time.points*exp(beta3) #Intercept
+
+
 beta3.lab<-x.func(dimnames(beta3)[[2]]) 
 beta3.lab.spl<-as.data.frame(matrix(as.numeric(as.character(unlist(strsplit(beta3.lab, ',',fixed=TRUE)))), ncol=3, byrow=TRUE))
 names(beta3.lab.spl)<-c('country','state')
@@ -93,7 +100,7 @@ for(i in c(1:9)){hist(beta3[,i])}
 quant.cp1<-t(max.time.points*exp(apply(beta3,2,quantile, probs=c(0.025,0.5,0.975))))
 var.cp1<-apply(beta3,2,var)
 cp1.lab<-x.func(dimnames(quant.cp1)[[1]]) 
-cp1.lab.spl<-as.data.frame(matrix(as.numeric(as.character(unlist(strsplit(cp1.lab, ',',fixed=TRUE)))), ncol=3, byrow=TRUE))
+cp1.lab.spl<-as.data.frame(matrix(as.numeric(as.character(unlist(strsplit( cp1.lab, ',',fixed=TRUE)))), ncol=3, byrow=TRUE))
 names(cp1.lab.spl)<-c('country','state')
 par(mfrow=c(2,2))
 plot(y=1:nrow(quant.cp1), x=quant.cp1[,'50%'], bty='l')
@@ -152,6 +159,19 @@ par(mfrow=c(1,1), mar=c(4,4,1,1))
 plot(quant.slp1[,'50%'], quant.cp1[,'50%'], pch=16, col=beta2.lab.spl$country,bty='l', ylab="Change point", xlab="Slope")
 dev.off()
 
+##True change point vs estimates
+tiff(paste0(output_directory,"true vs est cp.tiff"))
+par(mfrow=c(1,1), mar=c(4,4,1,1))
+plot(sim1.ds$cp.true-85, #subtract 85 because of how this was generated
+     quant.cp1[,'50%']-12,#subtract 12 because of issue with how it is defined in the model to make comparable to 'true' data 
+     pch=16, xlim=c(0,50), ylim=c(0,50),col=beta2.lab.spl$country,bty='l', ylab="Est Change point", xlab="True CP")
+abline(a=0, b=1)
+dev.off()
+
+cor(sim1.ds$cp.true-85, quant.cp1[,'50%']-12, method='spearman')
+
+
+
 ##melt and cast predicted values into 4D array N,t,i,j array
 reg_mean<-posterior_samples[[1]][,grep("reg_mean",dimnames(posterior_samples[[1]])[[2]])]
 pred1<-reg_mean
@@ -176,15 +196,20 @@ reg_unbias2<-cbind.data.frame(pred.indices.spl,t(reg_unbias))
 reg_unbias_m<-melt(reg_unbias2, id=c('time','country','state'))
 reg_unbias_c<-acast(reg_unbias_m, variable~time~country~state)
 reg_unbias_c<-reg_unbias_c[,order(as.numeric(dimnames(reg_unbias_c)[[2]])),order(as.numeric(dimnames(reg_unbias_c)[[3]])),order(as.numeric(dimnames(reg_unbias_c)[[4]]))]
-preds.unbias.q<-apply(reg_unbias_c,c(2,3,4),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
+preds.unbias.q<-apply(reg_unbias_c,c(2,3),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
 dimnames(preds.unbias.q)[[2]]<- as.numeric(as.character(dimnames(preds.unbias.q)[[2]]))
 
+tiff(paste0(output_directory,"true rr vs est RR.tiff"))
+par(mfrow=c(1,1), mar=c(4,4,1,1))
+plot(sim1.ds$log.rr.true, preds.unbias.q['50%',60,], pch=16, xlim=c(-0.5,0.5), ylim=c(-0.5,0.5),col=beta2.lab.spl$country,bty='l', ylab="Est log-RR", xlab="True log-RR")
+abline(a=0, b=1)
+dev.off()
+
 ######################
-for(i in c(1:length(countries))){
   tiff(paste0(output_directory,countries[i],"RR trajecory by state.tiff"))
   par(mfrow=c(5,6), mar=c(4,2,1,1))
-    for(j in 1:N.states[i]){
-        plot.data<-t(preds.unbias.q[,,i,j])
+    for(j in 1:27){
+        plot.data<-t(preds.unbias.q[,,j])
         plot.data2<-plot.data[complete.cases(plot.data),]
         final.rr<-paste0(round(exp(plot.data2[nrow(plot.data2),'50%', drop=F]),2),
                          ' (' ,round(exp(plot.data2[nrow(plot.data2),'2.5%', drop=F]),2),',',
@@ -199,7 +224,7 @@ for(i in c(1:length(countries))){
       
     }
   dev.off()
-}
+
 names(preds.unbias.q)[[3]]<-countries
 saveRDS(preds.unbias.q, file=paste0(output_directory,"reg_mean_with_pooling cp nobias.rds"))
 

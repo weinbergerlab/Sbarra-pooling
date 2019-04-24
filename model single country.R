@@ -5,8 +5,8 @@ model_string<-"
 
 model{
 
-for(i in 1:n.countries){
-for(j in 1:n.states[i]){
+
+for(j in 1:n.states){
 for(v in 1:ts.length[i,j]){       
 
 ##################
@@ -42,25 +42,12 @@ cp2[i,j]<-cp1[i,j] +cp2.add[i,j]  + 1/max.time.points   #ensure Cp2 is at least 
 ##############################################################
     #Second Stage Statistical Model
 ##############################################################
-beta[i,j, 1:4] ~ dmnorm(mu1[i,j, 1:4], Omega_inv[i, 1:4, 1:4])
-for(k in 1:4){
-mu1[i,j,k] <- z[i,j, k]*gamma[i,k]
+beta[i,j, 1:4] ~ dmnorm(lambda[1:4], Sigma_inv[1:4, 1:4])
 }
-}
-########################################################
-#Third Stage Statistical Model
-########################################################
-gamma[i, 1:4] ~ dmnorm(lambda[1:4], Sigma_inv[1:4, 1:4])
 
 
-#######################################################
-#Remaining Prior Distributions
-#######################################################
-Omega_inv[i,1:4, 1:4] ~ dwish(I_Omega[1:4, 1:4], (4 + 1))
-Omega[i,1:4, 1:4]<-inverse(Omega_inv[i,1:4, 1:4])
-}
 Sigma_inv[1:4, 1:4] ~ dwish(I_Sigma[1:4, 1:4], (4 + 1))
-Sigma[1:4, 1:4]<-inverse(Sigma_inv[1:4, 1:4])
+Sigma[1:4, 1:4] <- inverse(Sigma_inv[1:4, 1:4])
 
 for(j in 1:4){
 lambda[j] ~ dnorm(0, 1e-4) 
