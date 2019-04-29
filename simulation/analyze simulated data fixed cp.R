@@ -1,3 +1,7 @@
+##THIS ANALYSIS SHOWS THAT ESTIMATINGT THE CHANGE POINT FROM THE DATA YIELDS A 
+#BETTER FIT AND LOWER pD: better DIC than the model in which the change i
+#fixed
+
 
 rm(list=ls(all=TRUE))
 require(reshape)
@@ -9,7 +13,7 @@ library(splines)
 library(lubridate)
 library(stringr)
 
-output_directory<- paste0(dirname(getwd()), "/Results CP sim/")
+output_directory<- paste0(dirname(getwd()), "/Results fixed CP sim/")
 ifelse(!dir.exists(output_directory), dir.create(output_directory), FALSE)
 
 ####SET INPUTS PARAMETERS#############################################################################################################
@@ -24,7 +28,7 @@ N.states=1
 #####################################################################################################################################
 #format data
 source('./simulation/compile stage1 results sim.R') #Read in data
-source('./simulation/model single country.R')  #Read in model
+source('./simulation/model single country fixed cp.R')  #Read in model
 
 #Run Model
 ts.length_mat<-matrix(rep(nrow(log_rr_q_all), ncol(log_rr_q_all)), nrow=1)
