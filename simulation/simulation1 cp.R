@@ -85,4 +85,5 @@ results<- list( 'cp.true'=cp.true, 'log.rr.true'=log.rr.true,
                 'log_rr.sd'=log_rr.sd, 'log_rr_full_t_samples.prec'=log_rr_full_t_samples.prec )
 
 saveRDS(results,'C:/Users/dmw63/Weinberger Lab Dropbox/Dan Weinberger/pooling github/Sbarra-pooling/simulation/log_rr_sim cp.rds' )
+#results<-readRDS('C:/Users/dmw63/Weinberger Lab Dropbox/Dan Weinberger/pooling github/Sbarra-pooling/simulation/log_rr_sim cp.rds' )
 
