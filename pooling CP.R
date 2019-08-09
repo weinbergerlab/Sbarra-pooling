@@ -198,43 +198,43 @@ for(i in c(1:length(countries))){
 }
 saveRDS(preds.unbias.q, file=paste0(output_directory,"reg_mean_with_pooling cp nobias.rds"))
 
-
-##small multiples plot
-country=pred.indices.spl[,1]
-state=pred.indices.spl[,2]
-t=pred.indices.spl[,3]
-preds.nobias.q.alt<-apply(preds.nobias,c(2,3),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
-preds.nobias.q.alt<-preds.nobias.q.alt[,,order(country,state )]  #sort by country, then state
-pred.labs<-dimnames(preds.nobias.q.alt)[[3]] # labels from matrix
-pred.labs.extract<- sub(".*\\[(.*)\\].*", "\\1", pred.labs, perl=TRUE)    #extract index numbers from the labels
-pred.labs.extract2<-matrix(as.numeric(unlist(strsplit(pred.labs.extract, ","))),ncol=3, byrow=TRUE) #format into a matrix
-country2<-pred.labs.extract2[,1] 
-state2<-pred.labs.extract2[,2]
-country.labs2<-c('US', 'Fiji','Denmark' ,'Brazil', 'Mexico', 'Ecuador', 'Chile')
-cols.plot<- c('#e41a1c','#377eb8','#4daf4a','#984ea3', '#ff7f00','#a65628','#f781bf')
-shiny.ds<-list(preds.nobias.q.alt,country2 ,state2,cols.plot,country.labs2)
-names(shiny.ds)<-c('preds.nobias.q.alt','country2' ,'state2','cols.plot','country.labs2')
-saveRDS(shiny.ds,paste0(output_directory,'shiny.small.multiples.rds'))
-tiff(paste0(output_directory,'small multiple CP.tiff'), width = 12, height = 9, units = "in",res=200)
-par(mfrow=c(10,10) , mar=c(0.5,1,0.6,0))
-for (i in 1:dim(preds.nobias.q.alt )[3]){
-  y.all<- t(exp(preds.nobias.q.alt[,,i]))
-  keep.obs<-as.data.frame(complete.cases(y.all))[,1]
-  y.all<-y.all[keep.obs,]
-  n.times<- nrow(y.all)
-  xx<- c(1:n.times, rev(1:n.times))
-  yy<- c(y.all[,1], rev(y.all[,3] ))
-  matplot(t(exp(preds.nobias.q.alt[,,i])), bty='l', type='l', col='white', lty=c(2,1,2), xlim=c(0,48), ylim=c(0.5,2), axes=F)
-  polygon(xx, yy, col='gray90', border=NA)
-  points( y.all[,2], col=cols.plot[country2[i]], type='l')
-  abline(h=c(0.8,1,1.2), lty=c(3,2,3), col=c('gray','black','gray'), lwd=c(0.5,1,0.5)) 
-  Axis(side=1, labels=FALSE, at=c(0,12,24,36,48), tck=-0.005,  col='gray')
-  Axis(side=2, labels=FALSE, at=c(0.5,1,2.0), tck=-0.005, col='gray')
-  if(state2[i]==1){
-    title(country.labs2[country2[i]], col.main=cols.plot[country2[i]] )
-    }
-}
-dev.off()
+# 
+# ##small multiples plot
+# country=pred.indices.spl[,1]
+# state=pred.indices.spl[,2]
+# t=pred.indices.spl[,3]
+# preds.nobias.q.alt<-apply(preds.nobias,c(2,3),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
+# preds.nobias.q.alt<-preds.nobias.q.alt[,,order(country,state )]  #sort by country, then state
+# pred.labs<-dimnames(preds.nobias.q.alt)[[3]] # labels from matrix
+# pred.labs.extract<- sub(".*\\[(.*)\\].*", "\\1", pred.labs, perl=TRUE)    #extract index numbers from the labels
+# pred.labs.extract2<-matrix(as.numeric(unlist(strsplit(pred.labs.extract, ","))),ncol=3, byrow=TRUE) #format into a matrix
+# country2<-pred.labs.extract2[,1] 
+# state2<-pred.labs.extract2[,2]
+# country.labs2<-c('US', 'Fiji','Denmark' ,'Brazil', 'Mexico', 'Ecuador', 'Chile')
+# cols.plot<- c('#e41a1c','#377eb8','#4daf4a','#984ea3', '#ff7f00','#a65628','#f781bf')
+# shiny.ds<-list(preds.nobias.q.alt,country2 ,state2,cols.plot,country.labs2)
+# names(shiny.ds)<-c('preds.nobias.q.alt','country2' ,'state2','cols.plot','country.labs2')
+# saveRDS(shiny.ds,paste0(output_directory,'shiny.small.multiples.rds'))
+# tiff(paste0(output_directory,'small multiple CP.tiff'), width = 12, height = 9, units = "in",res=200)
+# par(mfrow=c(10,10) , mar=c(0.5,1,0.6,0))
+# for (i in 1:dim(preds.nobias.q.alt )[3]){
+#   y.all<- t(exp(preds.nobias.q.alt[,,i]))
+#   keep.obs<-as.data.frame(complete.cases(y.all))[,1]
+#   y.all<-y.all[keep.obs,]
+#   n.times<- nrow(y.all)
+#   xx<- c(1:n.times, rev(1:n.times))
+#   yy<- c(y.all[,1], rev(y.all[,3] ))
+#   matplot(t(exp(preds.nobias.q.alt[,,i])), bty='l', type='l', col='white', lty=c(2,1,2), xlim=c(0,48), ylim=c(0.5,2), axes=F)
+#   polygon(xx, yy, col='gray90', border=NA)
+#   points( y.all[,2], col=cols.plot[country2[i]], type='l')
+#   abline(h=c(0.8,1,1.2), lty=c(3,2,3), col=c('gray','black','gray'), lwd=c(0.5,1,0.5)) 
+#   Axis(side=1, labels=FALSE, at=c(0,12,24,36,48), tck=-0.005,  col='gray')
+#   Axis(side=2, labels=FALSE, at=c(0.5,1,2.0), tck=-0.005, col='gray')
+#   if(state2[i]==1){
+#     title(country.labs2[country2[i]], col.main=cols.plot[country2[i]] )
+#     }
+# }
+# dev.off()
 
 
 # 
@@ -283,27 +283,27 @@ dev.off()
 #       abline(h=0, col='red',lty=3)
 #       
 # dev.off()
-  
-tiff(paste0(output_directory,'/smooth with pooling josh fix all states bspline nobias.tiff'), width = 10.5, height = 4, units = "in",res=200)
-  country=beta.labs.extract2[,1]
-  state=beta.labs.extract2[,2]
-  t=beta.labs.extract2[,3]
-    par(mfrow=c(1,N.countries))
-  for(i in 1: N.countries){
-    print(i)
-    ds.select<-t(preds.nobias.q[country==i,,drop=FALSE])
-    
-    N.states<-ncol(ds.select)
-    log_rr_prec_state_mean<-rep(NA, times=N.states)
-    for (m in 1: N.states){
-      log_rr_prec_state_mean[m]<-mean(diag(log_rr_prec_all[,,m,i]), na.rm=TRUE)
-    }  
-        inv.var.ave.scale<-log_rr_prec_state_mean/max(log_rr_prec_state_mean, na.rm=TRUE)
-        inv.var.ave.scale[is.na(inv.var.ave.scale)]<-0
-        col.plot<-rgb(0,0,0, alpha=inv.var.ave.scale)
-        matplot( 1:ts.length[i],ds.select[1:ts.length[i],], col=col.plot,lty=1, ylim=c(-1.0,1.0), type='l', bty='l', ylab="Log(Rate ratio)", xlab="Months post-PCV")
-        abline(h=0)
-        title(countries[i])
-         }
-dev.off()
+#   
+# tiff(paste0(output_directory,'/smooth with pooling josh fix all states bspline nobias.tiff'), width = 10.5, height = 4, units = "in",res=200)
+#   country=beta.labs.extract2[,1]
+#   state=beta.labs.extract2[,2]
+#   t=beta.labs.extract2[,3]
+#     par(mfrow=c(1,N.countries))
+#   for(i in 1: N.countries){
+#     print(i)
+#     ds.select<-t(preds.nobias.q[country==i,,drop=FALSE])
+#     
+#     N.states<-ncol(ds.select)
+#     log_rr_prec_state_mean<-rep(NA, times=N.states)
+#     for (m in 1: N.states){
+#       log_rr_prec_state_mean[m]<-mean(diag(log_rr_prec_all[,,m,i]), na.rm=TRUE)
+#     }  
+#         inv.var.ave.scale<-log_rr_prec_state_mean/max(log_rr_prec_state_mean, na.rm=TRUE)
+#         inv.var.ave.scale[is.na(inv.var.ave.scale)]<-0
+#         col.plot<-rgb(0,0,0, alpha=inv.var.ave.scale)
+#         matplot( 1:ts.length[i],ds.select[1:ts.length[i],], col=col.plot,lty=1, ylim=c(-1.0,1.0), type='l', bty='l', ylab="Log(Rate ratio)", xlab="Months post-PCV")
+#         abline(h=0)
+#         title(countries[i])
+#          }
+# dev.off()
 
