@@ -1,0 +1,277 @@
+---
+author: "Daniel Weinberger"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+params:
+  sensitivity: FALSE
+  crossval: FALSE
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.height = 3,
+  fig.width = 5,
+  fig.align = "center", 
+  dpi=300, 
+	out.width="600px"
+)
+```
+
+---
+
+## Installing the package
+Uncomment and run the following 3 lines of code to install the package. You will be prompted to manually select a number to indicate whether to update dependencies and which ones. 
+```{r}
+#install.packages('devtools') 
+#library(devtools) 
+#devtools::install_github('https://github.com/weinbergerlab/InterventionEvaluatR') 
+```
+
+```{r setup_packages, include=FALSE, echo=TRUE}
+library(xtable)
+library(knitr)
+library(htmlTable)
+library(InterventionEvaluatR)
+library(coda)
+```
+
+
+```{r, echo=F}
+#Save the Ecuador mortality data as part of the package
+# library(RCurl)
+# script <- getURL("https://raw.githubusercontent.com/weinbergerlab/paho-pneumonia-mortality/master/Data/PAHO%20all%20age%20cuts_SubChapters.csv", ssl.verifypeer = FALSE)
+# 
+# paho1 <-read.csv(text=getURL("https://raw.githubusercontent.com/weinbergerlab/paho-pneumonia-mortality/master/Data/PAHO%20all%20age%20cuts_SubChapters.csv"),  header=T)
+# ecuador_mortality<-paho1[paho1$age_group %in% c('ec 2-59m A','ec 2-23m A','ec 24-59m A'), ]
+# ecuador_mortality$age_group<-factor(ecuador_mortality$age_group)
+# save(ecuador_mortality, file='../data/ecuador_mortality.rda')
+```
+
+---
+title: "Estimated change in pneumonia in Latin American countries, subnational analyses"
+---
+## Analysis goal
+The goal for this analysis is to quantify changes in the rates of hospitalization due to pneumonia in different regions of Latin American countries
+
+---
+## View dataset
+
+Let's load the data, which are included with the package
+```{r viewdata, include=TRUE}
+    ds<-read.csv('./prelog_Chile_state_u2.csv')
+  head(ds)
+  #ds$G00_99_SY <-NULL #Exclude meningitis as a control 
+
+```
+
+Ensure your date variable is in an R date format. If your variable is in a character or factor format, you need to tell R the format. 
+-- %m is a 2 digit month; %b is a month abbreviation (ie Jan, Feb)
+-- %d is a 2 digit day (0-31), 
+-- %Y is a 4 digit year (e.g. 2011), %y is a 2 digit year (e.g. 11).  
+These codes are separated by a dash or slash or space. Modify the tryFormats script below if needed to match the format in your dataset
+```{r}
+ds$date<-as.Date(ds$date, tryFormats=c('%Y-%m-%d',
+                                                    '%m-%d-%Y',
+                                                    '%m/%d/%Y',
+                                                    '%Y/%m/%d',
+                                                    '%d/%m/%Y'
+                                                    ) )
+```
+
+#Sort data by age group and month
+```{r}
+    ds<-ds[order(ds$age_group, ds$date),] #Sort data by age group and month
+```
+
+## Set parameters for analysis
+
+Here we need to set a few parameters. We Use the evaluatr.init() function to specify the name of the dataset, the date at which the vaccine is introduced, the date at which we want to begin evaluating the vaccine (typically 1-2 year after vaccine introduction). We also provide some information on the dataset, sch as whether the data are monthly or quarterly (n_seasons), the variable names for the grouping variable, the date variable, the outcome variable, and the denominator variable (if any).
+
+```{r setup_data, echo=TRUE}
+
+analysis <- evaluatr.init(
+  country = "Chile_state", data = ds,
+  post_period_start = "2011-01-01", #First 'post-intervention' month is Jan 2012
+  eval_period_start = "2012-01-01", #We ignore first 12 month of data to allow for vaccine ramp up
+  eval_period_end = "2016-12-01", #The evaluation period lasts 2 years
+  n_seasons = 12, #This is monthly data, so select 12
+  year_def = "cal_year", # we are in southern hemisphere, so aggregate results by calendar year (Jan-Dec)
+  group_name = "age_group",  #Strata categry name
+  date_name = "date", #Date variable name
+  outcome_name = "J12_18", #Outcome variable name
+  denom_name = "ach_noj" ,#Denominator variable name
+   set.burnN=10000,
+  set.sampleN=5000
+)
+set.seed(1)
+```
+
+## Run the main analysis
+Save the results in object 'impact_results'
+```{r main analysis, include = FALSE}
+impact_results = evaluatr.impact(analysis)
+```
+
+```{r}
+n.iter<-ncol(impact_results$full$rr_iter)
+thin=1
+trace1<-impact_results$full$rr_iter[,seq(from=1, to=n.iter, by=thin)] #thin
+for(i in 1: nrow(trace1)){
+  geweke.p<- pnorm(abs(geweke.diag(mcmc(trace1[i,]))$z),lower.tail=FALSE)*2
+  print(geweke.p)
+if(geweke.p>0.05){con.stat<-'Model converged'
+  }else{
+    con.stat<-'Not converged'
+  } 
+   plot(trace1[i,], type='l', main=paste0(con.stat,' ',colnames(trace1)[i]), bty='l', ylim=c(0.2,2))
+}
+
+```
+
+#`r params$country` Results
+
+
+```{r sparse, results="asis", echo=F}
+if (!is.null(names(analysis$sparse_groups[analysis$sparse_groups])) && length(names(analysis$sparse_groups[analysis$sparse_groups])) != 0) {
+  print(xtable(data.frame("Sparse Groups" = names(analysis$sparse_groups[analysis$sparse_groups]), check.names = FALSE), align = "cc"), type="html")
+}
+```
+
+##Compare estimates from different models
+This shows the estimated rate ratio and 95% credible intervals from a synthetic controls analysis; a time-trend analysis where we used the specified denominator (all non-respiratory deaths) to adjust the number of pneumonia deaths in each month and a linear trend for time; a classic interrupted time series analysis (segmented regression); and the STL+PCA approach, which smooths and combines the control variables prior to including them in the model. 
+```{r Comparison of estimates from different models, results="asis"}
+results.table<- cbind.data.frame(
+  #impact_results$best$rr_mean_intervals, 
+  impact_results$full$rr_mean_intervals, 
+  impact_results$time$rr_mean_intervals, 
+  #impact_results$time_no_offset$rr_mean_intervals, 
+  impact_results$its$rr_mean_intervals, 
+  impact_results$pca$rr_mean_intervals)
+
+  table<-xtable(results.table)
+  htmlTable(table)
+```
+
+
+##Cases averted
+How many cases were prevented from the time of vaccine introduction to the last time point in each stratum (+/- 95% CrI)? You can modify the number 'last.point' to pull out the cumulative number of cases at any point in the time series
+```{r}
+last.point<-dim(impact_results$best$cumsum_prevented)[1]
+cum.prevented<-impact_results$best$cumsum_prevented[last.point,,]
+```
+
+
+##Number of variables selected in SC analysis
+The Synthetic controls analysis uses a Bayesian variable selection algorithm to weight the candidate covariates. In each MCMC iteration, it tests a different combination of variables. The model size indicates how many variables are selected in any given model. If <1 variable is selected on average, this indicates that no suitable control variables were identified. 
+In this example 1-2 variables were selected on average in the 2-23m and 2-59 m age categories, while no controls were identified in the 24-59m age group (the average model size is <1 (0.44)).
+```{r modelsize, results="asis"}
+model_size = data.frame(t(analysis$model_size))
+htmlTable(model_size, align='c')
+```
+
+##Inclusion Probabilities
+```{r incl, include = FALSE}
+incl_probs <- NULL
+for (group in analysis$groups) {
+  incl_prob <- impact_results$full$groups[[group]]$inclusion_probs[-c(1:(analysis$n_seasons - 1)), ]
+  incl_prob <- incl_prob[order(-incl_prob$inclusion_probs), ]
+  incl_prob <- incl_prob[c(1:3), ]
+  incl_prob2 <- round(incl_prob[, 2],2)
+  incl_prob_names <- incl_prob[, 1]
+  incl_prob3 <- data.frame("Group" = group, "Greatest Inclusion Variable" = incl_prob_names[1], "Greatest Inclusion Probability" = incl_prob2[1], "Second Greatest Inclusion Variable" = incl_prob_names[2], "Second Greatest Inclusion Probability" = incl_prob2[2], "Third Greatest Inclusion Variable" = incl_prob_names[3], "Third Greatest Inclusion Probability" = incl_prob2[3], check.names = FALSE)
+  incl_probs <- rbind(incl_probs, incl_prob3)
+}
+rownames(incl_probs) <- NULL
+```
+
+Here we can see which variables received the most weight in the models for each strata. Values range from 0-1, with values closer to 1 indicating that the variable was included in a larger proportion of the variable combinations that were tested A value of 1 would indicate that the variable was always included in the model, a value of 0.48 would indicate the variable was included in 48% of the models that were tested.
+```{r incl_table, results="asis"}
+htmlTable(incl_probs)
+```
+
+
+##Generate and save the plots
+```{r mainplot1, echo=FALSE}
+plots <- evaluatr.plots(analysis)
+```
+
+## Plot the results for 1 age group
+###First look at the results from the synthetic controls model for 1 age group.
+
+This first plot shows a monthly time series, with observed, fitted, and counterfacual values. The observed number of deaths is shown in the black line. The fitted values for the pre-vaccine period are shown in the red dotted line, and the counterfactual estimate with its 95% credible interval is shown as the white dotted line and gray shaded area. if the black line is below the gray shaded area, this would indicate that obsrved cases are lower than expected based on changes in the control diseases in the post-vaccine period. If the controls appropriately adjust for underlying trends, then this would reflect an effect of the vaccine. 
+```{r, fig.width=5, fig.height=4}
+      plots$groups[[1]]$pred_full 
+```
+
+It is sometimes easier to look at the results if we aggregate the observed and expected values up to the annual time scale. Here the observed values are shown as black dots. When the black dots go below the gray shaded area, this indicates that the observed cases are lower than expected based on changes in the control diseases in the post-vaccine period. If the controls appropriately adjust for underlying trends, then this would reflect an effect of the vaccine. The vertical line indicates the date of vaccine introduction. The year when the vaccine is introduced is included to the right of the line, even if the vaccine was introduced part-way through the year. For instance, regardless of whether the the vaccine was introduced in January 2009 or November 2009, the observed dot for 2009 would be to the right of the line.
+
+```{r, fig.width=5, fig.height=4}
+      plots$groups[[1]]$pred_full_agg 
+```
+Finally, we can look at the cumulative cases prevented. In this example, there have been 445 cases prevented (95%CrI: 58, 931) from the time of vaccine introduction to the last day month of the study period. This is calculated by takin the difference between the observed and fitted number of cases in each month, and summing them. If atleast 1 control disease is identified from the synthetic controls model, then the result here is drawn from that model, otherwise, it is drawn from the STL+PCA model.
+
+```{r, fig.width=5, fig.height=4}
+      plots$groups[[1]]$cumsum_prevented 
+```
+
+
+## Printing plots for all models and age groups
+We instead might want to just print everything for all age groups and models. We can use the following code to do that
+
+## Plot Observed vs expected yearly time series
+```{r plots2, results = 'asis', fig.width=5, fig.height=4}
+for (group in names(plots$groups)) {
+      par(mfrow=c(4,1))
+      print(plots$groups[[group]]$pred_full_agg )
+      print(plots$groups[[group]]$pred_best_agg )
+      print(plots$groups[[group]]$pred_time_agg )
+      print(plots$groups[[group]]$pred_pca_agg )
+}
+```
+
+## Use HDI intervals instead
+The package calcuates both an equal-tail 95% credible interval and a 95% highest posterior density interval (HPD or HDI interval). The latter might be more appropriate when the posterior distribution is skewed. The objects with HDI intervals are saved with an appendix of 'HDI' so --impact_results$best$pred_quantiles gives the estimate for equal tail intervals while --impact_results$best$pred_quantiles_HDI gives the estimate for the HDI interval
+--impact_results$best$cumsum_prevented_hdi gives the estimate of cumulative cases prevented using HPI
+--impact_results$best$ann_pred_HDI gives the annual predicted cases with HDI intervals
+--impact_results$best$rr_mean_HDI gives the overall rate ratio caclulated with HDI intervals
+-- impact_results$best$log_rr_hdi gives the pointswise log-RR with HDI intervals
+Here we compare the version calculated with equal-tailed intervals with HPD intervals. In this example they give very similar coverage
+
+```{r}
+print("Equal tailed intervals")
+round(impact_results$best$rr_mean[,c(2,1,3)],2)
+
+print("HPD intervals")
+round(impact_results$best$rr_mean_hdi,2)
+
+```
+
+Compare pointwise coverage of the 95% CrI calculated as HDI or equal-tailed. In this example they are nearly identical. The red line denote the HPD intervals, the gray line denotes the equal-tailed
+```{r}
+matplot(impact_results$best$pred_quantiles_HDI[,c(2,3),1], type='l', col='gray', lty=c(2,1,2), bty='l', ylim=c(0, max(impact_results$best$pred_quantiles_HDI[,,1])), ylab='Count')
+
+matplot(impact_results$best$pred_quantiles[,c(1,3),1], type='l', col='red', lty=c(2,1,2), bty='l', ylim=c(0, max(impact_results$best$pred_quantiles_HDI[,,1])), ylab='Count', add=T)
+points(analysis$input_data[, analysis$outcome_name])
+```
+
+## Print results
+```{r save_results, echo=FALSE}
+output_file <- "Results" # Directory where results will be saved.
+output_file <- paste0(output_file, "_", analysis$country, "_", format(Sys.time(), "%Y-%m-%d-%H%M%S"), ".Rds")
+evaluatr.save(analysis, output_file)
+
+  ds<-readRDS(output_file)
+  ds$results$impact$best<-ds$results$impact$best[c('log_rr_quantiles','log_rr_sd')]
+  ds$results$impact$full<-ds$results$impact$full[c('log_rr_quantiles','log_rr_sd')]
+   ds$results$impact$pca<-ds$results$impact$pca[c('log_rr_quantiles','log_rr_sd')]
+   ds$results$impact$time<-ds$results$impact$pca[c('log_rr_quantiles','log_rr_sd')]
+   ds$results$impact<- ds$results$impact[c('full','best', 'time','pca')]
+   saveRDS(ds,paste0('./first stage estimates/',country,'/Results_',country,'.Rds'))
+```
+
+```{r}
+
+```
+
