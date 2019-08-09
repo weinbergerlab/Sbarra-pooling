@@ -17,8 +17,10 @@ max.time.points.post=48
 #filter out national and regional results for Brazil
 br.names<-dimnames(br1$results$impact$best$log_rr_quantiles)[[3]]
 aggregate.regions<-grep('A',br.names)
+if(length(aggregate.regions)>0){
 br1$results$impact$best$log_rr_quantiles<-br1$results$impact$best$log_rr_quantiles[,,-aggregate.regions]
 br1$results$impact$best$log_rr_sd<-br1$results$impact$best$log_rr_sd[,,-aggregate.regions, drop=F]
+}
 
 all.countries<-list('Chile_state'=chi1, 'Ecuador_state'=ec1, 'Mexico_state'=mx1, 'Brazil_state'=br1)
 subnational=c(1,1,1,1) #Vector indicating whether dataset contains subnational estmatesmax.time.points=48
