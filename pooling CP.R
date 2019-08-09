@@ -29,11 +29,11 @@ model_jags<-jags.model(textConnection(model_string),
                                 'I_Omega'= I_Omega,
                                 'max.time.points'=max.time.points,
                                 'time.index'=time.index,
-                                'I_Sigma'=I_Sigma), n.chains=1, n.adapt=5000) 
+                                'I_Sigma'=I_Sigma), n.chains=1, n.adapt=10000) 
 
 #Posterior Sampling
 update(model_jags, 
-       n.iter=5000)  #Burnin for 10,000 Samples
+       n.iter=10000)  #Burnin for 10,000 Samples
 # dic.mod1a <- dic.samples(model_jags, 5000,"pD")  #DIC=2161 with Brazil state, Mexico state, US
 # dic.mod1a
 
@@ -42,7 +42,7 @@ posterior_samples<-coda.samples(model_jags,
                                                  ,'cp1','cp2',"beta", 
                                                  'gamma','lambda'),
                                 thin=10,
-                                n.iter=5000)
+                                n.iter=50000)
 #plot(posterior_samples, ask=TRUE)
 saveRDS(posterior_samples,paste0(output_directory,'posterior_samples_CP.rds'))
 #posterior_samples<-readRDS(paste0(output_directory,'posterior_samples_CP.rds'))
@@ -176,7 +176,7 @@ dimnames(preds.unbias.q)[[2]]<- as.numeric(as.character(dimnames(preds.unbias.q)
 
 ######################
 for(i in c(1:length(countries))){
-  tiff(paste0(output_directory,countries[i],"RR trajecory by state.tiff"))
+  tiff(paste0(output_directory,countries[i],"RR trajectory by state.tiff"))
   par(mfrow=c(5,6), mar=c(4,2,1,1))
     for(j in 1:N.states[i]){
         plot.data<-t(preds.unbias.q[,,i,j])
@@ -185,12 +185,13 @@ for(i in c(1:length(countries))){
                          ' (' ,round(exp(plot.data2[nrow(plot.data2),'2.5%', drop=F]),2),',',
                          round(exp(plot.data2[nrow(plot.data2),'97.5%', drop=F]),2),")")
         start.post<-which( ((1:tot_time)-pre.vax.time)==0)
-        matplot( ((1:tot_time)-pre.vax.time), plot.data,type='l',yaxt='n', xlab='Months post-PCV',xlim=c(0, max.time.points),  ylim=c(-0.7,0.7), col='gray', lty=c(2,1,2), bty='l')
+        matplot( ((1:tot_time)-pre.vax.time), plot.data,type='l',yaxt='n', xlab='Months post-PCV',xlim=c(0, max.time.points),  
+                    ylim=c(-1,1), col='gray', lty=c(2,1,2), bty='l')
         abline(h=0)
-        axis(side=2, at=c(-0.7,-0.35,0,0.35,0.7), las=1,labels=round(exp(c(-0.7,-0.35,0,0.35,0.7)),1 ))
+        axis(side=2, at=c(-1,-0.5,0,5,1), las=1,labels=round(exp(c(-1,-0.5,0,5,1)),1 ))
        # abline(v=0)
-        title(countries[i])
-        text(start.post, log(2), final.rr)
+       # title(countries[i])
+        text(0, 1, final.rr, xpd=NA, offset=0, pos=4)
       
     }
   dev.off()
@@ -201,7 +202,7 @@ saveRDS(preds.unbias.q, file=paste0(output_directory,"reg_mean_with_pooling cp n
 ##small multiples plot
 country=pred.indices.spl[,1]
 state=pred.indices.spl[,2]
-t=beta.labs.extract2[,3]
+t=pred.indices.spl[,3]
 preds.nobias.q.alt<-apply(preds.nobias,c(2,3),quantile, probs=c(0.025,0.5,0.975),na.rm=TRUE)
 preds.nobias.q.alt<-preds.nobias.q.alt[,,order(country,state )]  #sort by country, then state
 pred.labs<-dimnames(preds.nobias.q.alt)[[3]] # labels from matrix
@@ -236,52 +237,52 @@ for (i in 1:dim(preds.nobias.q.alt )[3]){
 dev.off()
 
 
-
-#########################
-##PLOTS FOR FITTED VALUES, INCLUDING INTERCEPT
-tiff(paste0(output_directory,'ucl and LCL smooth with pooling josh fix all states CP.tiff'), width = 7, height = 4, units = "in",res=200)
-    par(mfrow=c(1,2))
-    matplot(preds.ucl, type='l', bty='l',col='gray')
-    title("Upper CrI")
-    abline(h=0, col='red',lty=3)
-    matplot(preds.lcl, type='l', bty='l',col='gray')
-    title("Lower CrI")
-    abline(h=0, col='red',lty=3)
-dev.off()
-
-country=beta.labs.extract2[,1]
-state=beta.labs.extract2[,2]
-t=beta.labs.extract2[,3]
-tiff(paste0(output_directory, 'fix all states bspline.tiff'), width = 10.5, height = 4, units = "in",res=200)
-    par(mfrow=c(1,N.countries))
-    for(i in 1: N.countries){
-      print(i)
-      ds.select<-t(preds.q[country==i,,drop=FALSE])
-      
-      N.states<-ncol(ds.select)
-      log_rr_prec_state_mean<-rep(NA, times=N.states)
-      for (m in 1: N.states){
-        log_rr_prec_state_mean[m]<-mean(diag(log_rr_prec_all[,,m,i]), na.rm=TRUE)
-      }
-      inv.var.ave.scale<-log_rr_prec_state_mean/max(log_rr_prec_state_mean, na.rm=TRUE)
-      inv.var.ave.scale[is.na(inv.var.ave.scale)]<-0
-      col.plot<-rgb(0,0,0, alpha=inv.var.ave.scale)
-      matplot( 1:ts.length[i],ds.select[1:ts.length[i],], col=col.plot,lty=1, ylim=c(-1.0,1.0), type='l', bty='l', ylab="Log(Rate ratio)", xlab="Months post-PCV")
-      abline(h=0)
-      title(countries[i])
-    }
-dev.off()   
-      
-tiff(paste0(output_directory,'ucl and LCL smooth with pooling josh fix all states CP nobias.tiff'), width = 7, height = 4, units = "in",res=200)
-      par(mfrow=c(1,2)) 
-      matplot(preds.nobias.ucl, type='l', bty='l',col='gray')
-      title("Upper CrI")
-      abline(h=0, col='red',lty=3)
-      matplot(preds.nobias.lcl, type='l', bty='l',col='gray')
-      title("Lower CrI")
-      abline(h=0, col='red',lty=3)
-      
-dev.off()
+# 
+# #########################
+# ##PLOTS FOR FITTED VALUES, INCLUDING INTERCEPT
+# tiff(paste0(output_directory,'ucl and LCL smooth with pooling josh fix all states CP.tiff'), width = 7, height = 4, units = "in",res=200)
+#     par(mfrow=c(1,2))
+#     matplot(preds.ucl, type='l', bty='l',col='gray')
+#     title("Upper CrI")
+#     abline(h=0, col='red',lty=3)
+#     matplot(preds.lcl, type='l', bty='l',col='gray')
+#     title("Lower CrI")
+#     abline(h=0, col='red',lty=3)
+# dev.off()
+# 
+# country=beta.labs.extract2[,1]
+# state=beta.labs.extract2[,2]
+# t=beta.labs.extract2[,3]
+# tiff(paste0(output_directory, 'fix all states bspline.tiff'), width = 10.5, height = 4, units = "in",res=200)
+#     par(mfrow=c(1,N.countries))
+#     for(i in 1: N.countries){
+#       print(i)
+#       ds.select<-t(preds.q[country==i,,drop=FALSE])
+#       
+#       N.states<-ncol(ds.select)
+#       log_rr_prec_state_mean<-rep(NA, times=N.states)
+#       for (m in 1: N.states){
+#         log_rr_prec_state_mean[m]<-mean(diag(log_rr_prec_all[,,m,i]), na.rm=TRUE)
+#       }
+#       inv.var.ave.scale<-log_rr_prec_state_mean/max(log_rr_prec_state_mean, na.rm=TRUE)
+#       inv.var.ave.scale[is.na(inv.var.ave.scale)]<-0
+#       col.plot<-rgb(0,0,0, alpha=inv.var.ave.scale)
+#       matplot( 1:ts.length[i],ds.select[1:ts.length[i],], col=col.plot,lty=1, ylim=c(-1.0,1.0), type='l', bty='l', ylab="Log(Rate ratio)", xlab="Months post-PCV")
+#       abline(h=0)
+#       title(countries[i])
+#     }
+# dev.off()   
+#       
+# tiff(paste0(output_directory,'ucl and LCL smooth with pooling josh fix all states CP nobias.tiff'), width = 7, height = 4, units = "in",res=200)
+#       par(mfrow=c(1,2)) 
+#       matplot(preds.nobias.ucl, type='l', bty='l',col='gray')
+#       title("Upper CrI")
+#       abline(h=0, col='red',lty=3)
+#       matplot(preds.nobias.lcl, type='l', bty='l',col='gray')
+#       title("Lower CrI")
+#       abline(h=0, col='red',lty=3)
+#       
+# dev.off()
   
 tiff(paste0(output_directory,'/smooth with pooling josh fix all states bspline nobias.tiff'), width = 10.5, height = 4, units = "in",res=200)
   country=beta.labs.extract2[,1]
@@ -306,71 +307,3 @@ tiff(paste0(output_directory,'/smooth with pooling josh fix all states bspline n
          }
 dev.off()
 
-
-# 
-# tiff('C:/Users/dmw63/Dropbox (Personal)/meta_analysis_results/stack all states/smooth with pooling josh fix all states bspline nobias plus cis.tiff', width = 10.5, height = 4, units = "in",res=200)
-# country=beta.labs.extract2[,1]
-# state=beta.labs.extract2[,2]
-# t=beta.labs.extract2[,3]
-# par(mfrow=c(1,N.countries))
-# for(i in 1: N.countries){
-#   print(i)
-#   ds.select<-t(preds.nobias.q[country==i,,drop=FALSE])
-#   ds.select.ucl<- t(preds.nobias.ucl[country==i,,drop=FALSE]) 
-#   ds.select.lcl<- t(preds.nobias.lcl[country==i,,drop=FALSE]) 
-#   N.states<-ncol(ds.select)
-#   log_rr_prec_state_mean<-rep(NA, times=N.states)
-#   for (m in 1: N.states){
-#     log_rr_prec_state_mean[m]<-mean(diag(log_rr_prec_all[,,m,i]), na.rm=TRUE)
-#   }
-#   inv.var.ave.scale<-log_rr_prec_state_mean/max(log_rr_prec_state_mean, na.rm=TRUE)
-#   inv.var.ave.scale[is.na(inv.var.ave.scale)]<-0
-#   col.plot<-rgb(0,0,0, alpha=inv.var.ave.scale)
-#   matplot( 1:ts.length[i],ds.select[1:ts.length[i],], col='black',lty=1, ylim=c(-1.0,1.0), type='l', bty='l', ylab="Log(Rate ratio)", xlab="Months post-PCV")
-#   matplot( 1:ts.length[i],ds.select.ucl[1:ts.length[i],], col='gray',lty=2, ylim=c(-1.0,1.0), type='l', bty='l', ylab="Log(Rate ratio)", xlab="Months post-PCV")
-#   matplot( 1:ts.length[i],ds.select.lcl[1:ts.length[i],], col='gray',lty=2, ylim=c(-1.0,1.0), type='l', bty='l', ylab="Log(Rate ratio)", xlab="Months post-PCV")
-#   
-#     abline(h=0)
-#   title(countries[i])
-# }
-# dev.off()
-
-#save(list = ls(all.names = TRUE),file=paste0(output_directory,"pooling no covars all states b splines.RData"),envir = .GlobalEnv)
-
-
-# 
-# #Project estimates back onto original time series
-# ##Extract Fiji
-# fiji.dates<-seq.Date(    from=as.Date('2012-09-01'),to= as.Date('2015-12-01'), by='month')
-# fiji.preds<-t(preds[,1:length(fiji.dates),which(countries=="Fiji")])
-# fiji.raw<-read.csv('C:\\Users\\DMW63\\Desktop\\My documents h\\GATES\\CausalImpact code\\Input data\\Fiji\\prelog_Fiji_processed_data4.csv')
-# fiji.raw2<-fiji.raw[fiji.raw$age_group=='ac_pneumonia_Age1_0',]
-# fill.length<- nrow(fiji.raw2) - length(fiji.dates)
-# pre.fill<-matrix(0, nrow=fill.length, ncol=ncol(fiji.preds))
-# fiji.preds.fill<-exp(rbind(pre.fill,fiji.preds ))
-# counterfact<- 1/fiji.preds.fill * fiji.raw2$pneuvar
-# countfact.ci<-t(apply(counterfact,1,quantile, probs=c(0.025,0.5,0.975)))
-# countfact.ci[1:fill.length,] <-NA
-# #Plot the observed vs counterfactual cases
-# matplot(countfact.ci, type='l', col='gray', lty=1)
-# points(fiji.raw2$pneuvar)
-# dev.off()
-# 
-# #Plot the RR with CIs
-# preds.ci<-t(apply(fiji.preds,1,quantile, probs=c(0.025,0.5,0.975)))
-# matplot(exp(preds.ci), type='l', col='gray', lty=1, bty='l')
-# abline(h=1, lty=2, col='gray')
-# 
-# #Aggregate the counterfactual and observed by year
-#  fiji.years<-year(fiji.dates)
-#  fiji.preds.year.split<-lapply(split(counterfact[-c(1:fill.length),], fiji.years), matrix , ncol=ncol(fiji.preds)  )
-#  fiji.preds.year.sum<-sapply(fiji.preds.year.split , function(x) apply(x,2, sum) ) 
-#  fiji.preds.year.sum.length<-sapply(fiji.preds.year.split , function(x) nrow(x) ) 
-#  fiji.preds.year.sum.q<-t(apply(fiji.preds.year.sum , 2, quantile, probs=c(0.025,0.5,0.975)) )*12/fiji.preds.year.sum.length
-# obs.year<- aggregate( fiji.raw2$pneuvar[-c(1:fill.length)], by=list(fiji.years), sum)[,2]*12/fiji.preds.year.sum.length
-# tiff(paste0(output_directory,'/project onto original aggregated time series fiji.tiff'), width = 10.5, height = 4, units = "in",res=200)
-#  par(mfrow=c(1,1))
-#   matplot(unique(fiji.years), fiji.preds.year.sum.q, type='l', col='gray', bty='l', ylim=c(0, max(fiji.preds.year.sum.q)))
-#   points(unique(fiji.years), obs.year, pch=16, col='black')
-#   dev.off()
-#   #

@@ -56,10 +56,10 @@ N.time.series <- sum(N.states)
 ts.length<-sapply(all.log.rr, function(x)  dim(x)[1])
 N.countries<-length(all.log.rr)
 state.labels.list<-sapply(all.log.rr, function(x)  dimnames(x)[[2]])
-max.time.points<- max.time.points.post+pre.vax.time
+max.time.points<- max.time.points.post +pre.vax.time
 
 ##Combine together estimates from each country into a single array
-tot_time<-pre.vax.time+ max.time.points
+tot_time<-max.time.points
 log_rr_q_all<-array(NA, dim=c(tot_time,max(N.states),N.countries))
 log_rr_prec_diag_all<-array(NA, dim=c(tot_time,max(N.states),N.countries))
 state.labels<-array(NA, dim=dim(log_rr_q_all)[c(2:3)]   )
